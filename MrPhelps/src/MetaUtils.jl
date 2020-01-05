@@ -17,10 +17,12 @@ function worker_meta()
         @assert( !haskey(compute_metadata, worker.id) )
         #Handle special case of master node
         if isa( worker, Distributed.LocalProcess )
-            if isdefined(worker.bind_addr)
+            try
                 local_metadata[ worker.id ]   = WorkerMetaData( Distributed.LocalProcess, worker.bind_addr  )
-            else
-                local_metadata[ worker.id ]   = WorkerMetaData( Distributed.LocalProcess, missing  )
+            catch err
+                if isa(err, UndefRefError)
+                    local_metadata[ worker.id ]   = WorkerMetaData( Distributed.LocalProcess, missing  )
+                end
             end
         else
             compute_metadata[ worker.id ] = WorkerMetaData( typeof( worker.manager ), worker.config.host  )

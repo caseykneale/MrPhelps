@@ -9,7 +9,7 @@ module MrPhelps
 
     using Distributed, ClusterManagers
     using LightGraphs, MetaGraphs
-    using Dates
+    using Dates, Logging
 
     include("MetaUtils.jl")
     export WorkerMetaData, worker_meta
