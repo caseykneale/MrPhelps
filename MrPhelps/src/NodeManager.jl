@@ -28,3 +28,12 @@ function update!(nm::NodeManager)
     nm.computemeta = compute_metadata
     return nm
 end
+
+function determinemachines( nm::NodeManager )
+    addresses = unique( [ worker_meta.address for ( id, worker_meta ) in nm.computemeta ] )
+    groupedby = Dict()
+    for addr in addresses
+        groupedby[addr] = [ meta.address for (k, meta) in nm.computemeta if ( meta.address == addr ) ]
+    end
+    return groupedby
+end
