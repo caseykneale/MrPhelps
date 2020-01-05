@@ -1,0 +1,11 @@
+name = "MrPhelps"
+uuid = "34eca195-79bb-46f1-8ba7-f35a3f9bd877"
+authors = ["caseykneale "]
+version = "0.1.0"
+
+[deps]
+ClusterManagers = "34f1f09b-3a8b-5176-ab39-66d58a4d544e"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+LightGraphs = "093fc24a-ae57-5d10-9952-331d41423f4d"
+MetaGraphs = "626554b9-1ddb-594c-aa3c-2596fe9399a5"
