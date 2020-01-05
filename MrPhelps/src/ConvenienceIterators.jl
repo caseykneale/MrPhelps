@@ -1,13 +1,16 @@
-function interleavestrings(x::Vector{String}, y::Vector{String})
-    lenx, leny = length( x ), length( y )
-    largest = max( lenx, leny )
-    result = ""
-    for i in 1 : largest
-        xadd = ( i <= lenx ) ? x[ i ] : ""
-        yadd = ( i <= leny ) ? y[ i ] : ""
-        result = result * xadd * yadd
-    end
-    return result
+"""
+    interleavestrings(x::Vector{<:AbstractString}, y::Vector{<:AbstractString})
+
+Interleaves two vectors of strings. `x` comes before `y`.
+Shout out: Thanks, Don MacMillen from Slack!
+"""
+function interleavestrings(x::Vector{<:AbstractString}, y::Vector{<:AbstractString})
+    lenx, leny = length(x), length(y)
+    largest = max(lenx, leny)
+    result = fill("", 2*largest)
+    result[1:2:2*lenx] = x
+    result[2:2:2*leny] = y
+    return join(result)
 end
 
 struct Expand

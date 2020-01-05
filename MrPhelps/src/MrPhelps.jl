@@ -12,9 +12,12 @@ module MrPhelps
     using Dates
 
     include("MetaUtils.jl")
-    export worker_meta
+    export WorkerMetaData, worker_meta
 
     include("ConvenienceIterators.jl")
     export interleavestrings, Expand
+
+    include("NodeManager.jl")
+    export NodeManager, update!
 
 end # module
