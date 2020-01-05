@@ -48,9 +48,9 @@ end
 
 function Base.iterate( iter::Expand, state = ( nothing ) )
     if isnothing(state)
-        subiter, state = collect( iterate( expanded.productiter ) )
+        subiter, state = collect( iterate( iter.productiter ) )
     else
-        nextiter = iterate( expanded.productiter, state )
+        nextiter = iterate( iter.productiter, state )
         if isnothing( nextiter )
             return nothing
         end
