@@ -4,6 +4,13 @@ mutable struct NodeManager
     computemeta::Union{ Missing, Dict{Int64, MrPhelps.WorkerMetaData} }
 end
 
+"""
+    NodeManager()
+
+Constructs a NodeManager objects. This object contains metadata about the processes
+available to Distributed.jl.
+
+"""
 function NodeManager()
     if Distributed.nworkers() == 1
         @info   "NodeManager instance created with only a local worker and no Distributed.jl workers. \n " *
@@ -16,6 +23,12 @@ function NodeManager()
                         compute_metadata)
 end
 
+"""
+    update!(nm::NodeManager)
+
+Updates a NodeManager instance `nm` via the processes present in Distributed.jl .
+
+"""
 function update!(nm::NodeManager)
     if Distributed.nworkers() == 1
         @info   "NodeManager instance created with only a local worker and no Distributed.jl workers. \n " *
@@ -29,7 +42,14 @@ function update!(nm::NodeManager)
     return nm
 end
 
-function determinemachines( nm::NodeManager )
+"""
+    determinemachines( nm::NodeManager )
+
+Takes a NodeManager(`nm`) as input and returns a dictionary of whose keys are
+unique hosts and whose values are vectors of their Process ID numbers.
+
+"""
+function availablemachines( nm::NodeManager )
     addresses = unique( [ worker_meta.address for ( id, worker_meta ) in nm.computemeta ] )
     groupedby = Dict()
     for addr in addresses

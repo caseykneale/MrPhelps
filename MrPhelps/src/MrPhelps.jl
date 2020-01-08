@@ -18,6 +18,7 @@ module MrPhelps
     export interleavestrings, Expand
 
     include("NodeManager.jl")
-    export NodeManager, update!, determinemachines
+    export NodeManager, update!, availablemachines
 
+    
 end # module
