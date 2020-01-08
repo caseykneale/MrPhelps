@@ -41,6 +41,10 @@ mutable struct PlanGraph
 end
 PlanGraph() = PlanGraph( SimpleDiGraph(), 0, Dict() )
 
+function query_metadata( PG::PlanGraph, category::Symbol, valuestr::String )
+    return [ vtx for ( vtx, nn ) in PG.meta if nn[ category ] == valuestr]
+end
+
 nickname( PG::PlanGraph, vtx::Int )     = PG.meta[ vtx ][ :nickname ]
 process_id( PG::PlanGraph, vtx::Int )   = PG.meta[ vtx ][ :id ]
 machines( PG::PlanGraph, vtx::Int )     = PG.meta[ vtx ][ :machines ]
@@ -49,7 +53,7 @@ nicknames( PG ) = [ nn[ :nickname ] for ( vtx, nn ) in PG.meta ]
 actiongraph = PlanGraph()
 
 function add_agent!(graph::PlanGraph, fn::Function, nickname::String, machines::Vector{ String } )
-    @assert( any(nickname .== nicknames), "Nickname has already been defined.")
+    @assert( !any(nickname .== nicknames(graph)), "Nickname has already been defined.")
     add_vertex!( graph.g )
     graph.nv += 1
     graph.meta[ graph.nv ] = Dict(  :fn => fn,     :nickname => nickname,
@@ -58,7 +62,7 @@ function add_agent!(graph::PlanGraph, fn::Function, nickname::String, machines::
 end
 
 function add_stash!(graph::PlanGraph, src::String, nickname::String, machines::Vector{ String } )
-    @assert( any(nickname .== nicknames), "Nickname has already been defined.")
+    @assert( !any(nickname .== nicknames(graph)), "Nickname has already been defined.")
     add_vertex!( graph.g )
     graph.nv += 1
     graph.meta[ graph.nv ] = Dict(  :source => src,    :nickname => nickname,
@@ -66,16 +70,20 @@ function add_stash!(graph::PlanGraph, src::String, nickname::String, machines::V
     return nothing
 end
 
-function (PG::PlanGraph)(from::String, to::String; idxby = :nickname)
+function (PG::PlanGraph)(from_str::String, to_str::String; idxby = :nickname)
     @assert( ( idxby != :source ) && ( idxby != :fn ), "Cannot index a PlanGraph by `:source` or `:fn`." )
-    add_edge!( PG.g, from, to )
+    from_vtx    = query_metadata(PG, idxby, from_str)
+    to_vtx      = query_metadata(PG, idxby, to_str)
+    add_edge!( PG.g, from_str, to_str )
 end
 
 nicknames(actiongraph)
-
 add_agent!(actiongraph, prod, "node1", ["cookie","applies"] )
+nicknames(actiongraph)
+add_agent!(actiongraph, prod, "node1", ["cookie","applies"] )
+nicknames(actiongraph)
 
-
+query_metadata(actiongraph, :nickname, "node1")
 
 length(actiongraph.g.ne)
 
