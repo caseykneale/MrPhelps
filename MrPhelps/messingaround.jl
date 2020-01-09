@@ -38,8 +38,9 @@ mutable struct PlanGraph
     g::SimpleDiGraph
     nv::Int
     meta::Dict
+    lastnode::Int
 end
-PlanGraph() = PlanGraph( SimpleDiGraph(), 0, Dict() )
+PlanGraph() = PlanGraph( SimpleDiGraph(), 0, Dict(), 0 )
 
 function query_metadata( PG::PlanGraph, category::Symbol, valuestr::String )
     result = [ vtx for ( vtx, nn ) in PG.meta if nn[ category ] == valuestr]
@@ -73,15 +74,25 @@ end
 
 function (PG::PlanGraph)(from_str::String, to_str::String; idxby = :nickname)
     @assert( ( idxby != :source ) && ( idxby != :fn ), "Cannot index a PlanGraph by `:source` or `:fn`." )
-    from_vtx    = query_metadata(PG, idxby, from_str)
-    to_vtx      = query_metadata(PG, idxby, to_str)
-    @assert( (0 < length(from_vtx) < 2), "$from_str not found in graph." )
-    @assert( (0 < length(to_vtx) < 2), "$to_str not found in graph." )
-    add_edge!( PG.g, first(from_vtx), first(to_vtx) )
+    from_vtx    = query_metadata( PG, idxby, from_str )
+    to_vtx      = query_metadata( PG, idxby, to_str )
+    @assert( (0 < length( from_vtx ) < 2), "$from_str not found in graph." )
+    @assert( (0 < length( to_vtx ) < 2), "$to_str not found in graph." )
+    add_edge!( PG.g, first( from_vtx ), first( to_vtx ) )
+    PG.lastnode = first( to_vtx )
+    return to_str
+end
+
+function (PG::PlanGraph)(to_str::String; idxby = :nickname)
+    @assert( ( idxby != :source ) && ( idxby != :fn ), "Cannot index a PlanGraph by `:source` or `:fn`." )
+    to_vtx      = query_metadata( PG, idxby, to_str )
+    @assert( (0 < length( to_vtx ) < 2), "$to_str not found in graph." )
+    add_edge!( PG.g, PG.lastnode, first( to_vtx ) )
+    PG.lastnode = first( to_vtx )
 end
 
 function load_data(src::String)
-    println("I read the file")
+    println("I read the file \n pscyhe I do nothing!")
 end
 
 actiongraph = PlanGraph()
@@ -92,8 +103,10 @@ add_agent!(actiongraph, prod, "Transformer", ["SSH","Local"] )
 #nicknames(actiongraph)
 
 #form connections
-(actiongraph)( "TheCSV", "Ingester"; idxby = :nickname)
-(actiongraph)( "Ingester", "Transformer" )
+actiongraph( "TheCSV", "Ingester"; idxby = :nickname)
+actiongraph( "Transformer" )
+
+foldl( actiongraph, [ "TheCSV", "Ingester", "Transformer" ] )
 
 
 #well we basically have a graph now...
