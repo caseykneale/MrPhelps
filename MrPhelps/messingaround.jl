@@ -42,7 +42,8 @@ end
 PlanGraph() = PlanGraph( SimpleDiGraph(), 0, Dict() )
 
 function query_metadata( PG::PlanGraph, category::Symbol, valuestr::String )
-    return [ vtx for ( vtx, nn ) in PG.meta if nn[ category ] == valuestr]
+    result = [ vtx for ( vtx, nn ) in PG.meta if nn[ category ] == valuestr]
+    return result
 end
 
 nickname( PG::PlanGraph, vtx::Int )     = PG.meta[ vtx ][ :nickname ]
@@ -50,14 +51,13 @@ process_id( PG::PlanGraph, vtx::Int )   = PG.meta[ vtx ][ :id ]
 machines( PG::PlanGraph, vtx::Int )     = PG.meta[ vtx ][ :machines ]
 nicknames( PG ) = [ nn[ :nickname ] for ( vtx, nn ) in PG.meta ]
 
-actiongraph = PlanGraph()
-
 function add_agent!(graph::PlanGraph, fn::Function, nickname::String, machines::Vector{ String } )
     @assert( !any(nickname .== nicknames(graph)), "Nickname has already been defined.")
     add_vertex!( graph.g )
     graph.nv += 1
     graph.meta[ graph.nv ] = Dict(  :fn => fn,     :nickname => nickname,
-                                    :id => :none,  :machines => machines )
+                                    :id => :none,  :machines => machines,
+                                    :isagent => true )
     return nothing
 end
 
@@ -66,7 +66,8 @@ function add_stash!(graph::PlanGraph, src::String, nickname::String, machines::V
     add_vertex!( graph.g )
     graph.nv += 1
     graph.meta[ graph.nv ] = Dict(  :source => src,    :nickname => nickname,
-                                    :id => :none,      :machines => machines )
+                                    :id => :none,      :machines => machines,
+                                    :isagent => false)
     return nothing
 end
 
@@ -74,14 +75,28 @@ function (PG::PlanGraph)(from_str::String, to_str::String; idxby = :nickname)
     @assert( ( idxby != :source ) && ( idxby != :fn ), "Cannot index a PlanGraph by `:source` or `:fn`." )
     from_vtx    = query_metadata(PG, idxby, from_str)
     to_vtx      = query_metadata(PG, idxby, to_str)
-    add_edge!( PG.g, from_str, to_str )
+    @assert( (0 < length(from_vtx) < 2), "$from_str not found in graph." )
+    @assert( (0 < length(to_vtx) < 2), "$to_str not found in graph." )
+    add_edge!( PG.g, first(from_vtx), first(to_vtx) )
 end
 
-nicknames(actiongraph)
-add_agent!(actiongraph, prod, "node1", ["cookie","applies"] )
-nicknames(actiongraph)
-add_agent!(actiongraph, prod, "node1", ["cookie","applies"] )
-nicknames(actiongraph)
+function load_data(src::String)
+    println("I read the file")
+end
+
+actiongraph = PlanGraph()
+
+add_stash!(actiongraph, "/home/caseykneale/Desktop/megacsv.csv", "TheCSV", ["SSH"] )
+add_agent!(actiongraph, load_data, "Ingester", ["SSH"] )
+add_agent!(actiongraph, prod, "Transformer", ["SSH","Local"] )
+#nicknames(actiongraph)
+
+#form connections
+(actiongraph)( "TheCSV", "Ingester"; idxby = :nickname)
+(actiongraph)( "Ingester", "Transformer" )
+
+
+#well we basically have a graph now...
 
 query_metadata(actiongraph, :nickname, "node1")
 
@@ -91,12 +106,7 @@ dump(actiongraph.g)
 
 add_agent!(actiongraph, sum, "node1", [1,2,3] )
 
-# Chains,
-# Sensors/Listeners
-# Sources/Sinks
 
-
-Dict(:nickname => 123)
 
 struct Sensor
     fn::Function
@@ -104,16 +114,7 @@ struct Sensor
     performance::Dict
 end
 
-val, t, bytes, gctime, memallocs = @timed rand(10^6)
-
-a(10)
-
-output = @timev println("cookies")
-typeof(output)
-
-fn(x) = x + 3
-typeof( fn ) <: Function
-typeof( x -> x + 3 ) <: Function
+#val, t, bytes, gctime, memallocs = @timed rand(10^6)
 
 struct TaskGraph
 
