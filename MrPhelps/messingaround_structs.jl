@@ -3,13 +3,13 @@ Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop
 using MrPhelps
 
 #Test Case
-# tst = "simulation{number}awesome{name}.csv"
-# semantics = Dict( "name"    => [ "great", "okay", "bad" ],
-#                   "number"  => [ "1", "2", "3" ] )
-#
-# for s in Expand( tst, semantics )
-#   println( s )
-# end
+tst = "simulation{name}awesome{number}.csv"
+semantics = Dict( "name"    => [ "great", "okay", "bad" ],
+                  "number"  => [ "1", "2", "3" ] )
+
+for s in Expand( tst, semantics )
+  println( s )
+end
 
 using Distributed, ClusterManagers, SharedArrays
 using LightGraphs, MetaGraphs
@@ -51,26 +51,8 @@ connect!(actiongraph, :Prod1, :Prod2)
 #display final result
 attach_node!(actiongraph, :final => Agent( println, ["Local"] ) )
 
-message = Dict( [1,2,3,4] .=> ["why", "is", "julia", "great?"])
-result = join(map(x -> message[x], [ 3, 2, 4 ] ), " ")
-println(result[1:(end-1)])
-
 
 #well we basically have a graph now...
-
-
-struct Sensor
-    fn::Function
-    worker_id::Int
-    performance::Dict
-end
-
-#val, t, bytes, gctime, memallocs = @timed rand(10^6)
-
-struct TaskGraph
-
-end
-
 #Sys.cpu_info()
 # @sync @distributed for i in 1:nprocs()
 #     println(Sys.cpu_info())

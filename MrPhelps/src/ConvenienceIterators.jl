@@ -29,7 +29,8 @@ function Expand( str::String, replace_map::Dict{String,Vector{String}} )
         push!( items, item )
     end
     #sort the order of the items found in the string by which come first!
-    sort!(locations, by = x -> first( x ) )
+    idx = sortperm(locations, by = x -> first( x ) )
+    locations = locations[idx]
     #Handle edgecase where string starts with keyword to be replaced
     ( lastloc, tag ) = locations[ 1 ]
     firstcut = ( lastloc[ 1 ] > 1 ) ? str[ 1 : ( lastloc - 1 ) ] : ""
@@ -43,7 +44,7 @@ function Expand( str::String, replace_map::Dict{String,Vector{String}} )
     ( lastloc, tag ) = locations[ end ]
     push!( cuts,  str[ ( lastloc + length( tag ) + 2 ) : end] )
 
-    return Expand( cuts, locations, Iterators.product( items... ) )
+    return Expand( cuts, locations, Iterators.product( items[idx]... ) )
 end
 
 function Base.iterate( iter::Expand, state = ( nothing ) )
