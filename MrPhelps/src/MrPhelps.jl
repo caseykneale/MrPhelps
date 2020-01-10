@@ -20,5 +20,8 @@ module MrPhelps
     include("NodeManager.jl")
     export NodeManager, update!, availablemachines
 
-    
+    include("ActionGraph.jl")
+    export  PlanNode, Agent, Stash, PlanGraph, query_metadata, machines, 
+            add_node!, attach_node!, addbookmark!, attach_node!, connect!
+
 end # module
