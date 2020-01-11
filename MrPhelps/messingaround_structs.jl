@@ -19,11 +19,11 @@ RemoteNode  = @async addprocs( [ ( "optics@192.168.0.14", 2 ) ], tunnel = true, 
     using Pkg
     pth = "/home/caseykneale/Desktop/Playground/MrPhelps/"
     pth = isdir( "/home/caseykneale/" ) ? pth : "/home/optics/Playground/MrPhelps/"
-    # if !isdir( "/home/caseykneale/" )
-    #     run(`cd /home/optics/Playground/"`)
-    #     run(`git pull`)
-    #     run(`cd`)
-    # end
+    if !isdir( "/home/caseykneale/" )
+        #run(`cd /home/optics/Playground/`)
+        #run(`git pull`)
+        #run(`cd`)
+    end
     Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path=pth))
 end
 @everywhere using MrPhelps
