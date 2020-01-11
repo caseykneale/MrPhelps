@@ -10,6 +10,7 @@ end
 
 Returns a two dictionaries (local, and compute) containing metadata of all workers in scope.
 This is for quick access to otherwise nested information and seperation of compute resources.
+
 """
 function worker_meta()
     local_metadata, compute_metadata   = Dict(),  Dict()

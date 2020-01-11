@@ -22,6 +22,7 @@ module MrPhelps
 
     include("MissionGraph.jl")
     export  MissionNode, Agent, Stash, MissionGraph, query_metadata, machines,
-            add_node!, attach_node!, addbookmark!, attach_node!, connect!
+            add_node!, attach_node!, addbookmark!, attach_node!, connect!,
+            terminalnodes, termnodes, parentnodes
 
 end # module

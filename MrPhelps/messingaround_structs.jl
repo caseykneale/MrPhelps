@@ -1,20 +1,25 @@
-using Pkg, Revise
+using Pkg
 Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop/Playground/MrPhelps/"))
 using MrPhelps
 using Distributed, ClusterManagers, SharedArrays
-using LightGraphs, MetaGraphs
-using Dates, Logging
+using Dates
+
+localonly = true
 
 #                        Connect Machines!
 #First a user needs to define machines it has access too...
 MrPhelps.greet()
+if !localonly
+    run(`scp -r /home/caseykneale/Desktop/Playground optics@192.168.0.14:/home/optics/`)
+end
 #Define NodeManager - to keep track of Distributed Hooks to all machines
 nm = NodeManager()
 #Connect to a remote box and use a core/thread on the local machine!
 LocalNode   = @async addprocs( 2; restrict = true )
-#scp -r /home/caseykneale/Desktop/Playground optics@192.168.0.14:/home/optics/
-RemoteNode  = @async addprocs( [ ( "optics@192.168.0.14", 2 ) ], tunnel = true, max_parallel = 4,
-                              exename = "/home/optics/julia-1.3.0/bin/julia") #, sshflags = "-vvv" )
+if !localonly
+    RemoteNode  = @async addprocs( [ ( "optics@192.168.0.14", 2 ) ], tunnel = true, max_parallel = 4,
+                                    exename = "/home/optics/julia-1.3.0/bin/julia") #, sshflags = "-vvv" )
+end
 
 @everywhere begin
     using Pkg
@@ -34,6 +39,7 @@ update!(nm)
 
 #Grok the machines we have available to our node manager...
 nm.machinenodemap
+
 #                        Define Some Tasks
 function load_data(src::String)
     println("I read the file \n pscyhe I do nothing!")
@@ -57,9 +63,20 @@ connect!(mission, :Prod1, :Prod2)
 attach_node!(mission, :final => Agent( println, ["Local"] ) )
 
 #well we basically have a graph now...
-struct MissionManager
-    mission::MissionGraph
-    workman::WorkManager
-    nodeman::NodeManager
+# struct MissionManager
+#     mission::MissionGraph
+#     workman::WorkManager
+#     nodeman::NodeManager
+# end
 
-end
+#lets crawl the graph!find all parent/source nodes
+sources = terminalnodes( mission.g )[ :parentnodes ]
+
+#Need a handler to emit that a task should start
+#Need a distributed File Reading thing...
+#Need a handler to emit when a task is done
+#Need an error handler...
+#Need a way to coelesce data
+
+
+mission
