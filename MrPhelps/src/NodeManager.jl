@@ -54,7 +54,7 @@ dictionary of whose keys are unique hosts and whose values are vectors of their 
 
 """
 function availablemachines( computemetadict::Dict )
-    addresses = unique( [ addresses for ( id, worker_meta ) in computemetadict ] )
+    addresses = unique( [ worker_meta.address for ( id, worker_meta ) in computemetadict ] )
     groupedby = Dict()
     for addr in addresses
         groupedby[ addr ] = [ k for (k, meta) in computemetadict if ( addresses == addr ) ]

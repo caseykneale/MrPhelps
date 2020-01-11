@@ -4,7 +4,7 @@ module MrPhelps
     greet() = print("Your mission, should you choose to accept it, is to distribute all the tasks..."*
                     "As always, should you or any of your IM Force be caught or " *
                     "killed, The Secretary will disavow any knowledge of your" *
-                    "actions. This tape will self-destruct in ten seconds.\n" *
+                    " actions. This tape will self-destruct in ten seconds.\n" *
                     "Good luck,")
 
     using Distributed, ClusterManagers
