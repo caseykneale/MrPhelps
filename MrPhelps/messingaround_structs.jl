@@ -25,9 +25,22 @@ end
 
 #Update our node manager, we've added connections
 update!(nm)
-
 #Grok the machines we have available to our node manager...
 machine_to_ids = availablemachines( nm )
+# function machine_node_map( nm::NodeManager )
+#     names = availablemachines( nm )
+#     ids = [ [] for i in 1:length(names) ]
+#     for ( id, worker_meta ) in nm.computemeta
+#         addr_idx = findfirst( worker_meta.address .== names )
+#         push!( addresses[ addr_idx ], id )
+#     end
+#     return Dict( names .=> ids )
+# end
+
+nm.computemeta[2].address
+
+
+machine_node_map(nm)
 nm
 #                        Define Some Tasks
 function load_data(src::String)

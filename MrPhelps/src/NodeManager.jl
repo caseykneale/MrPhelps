@@ -2,6 +2,7 @@ mutable struct NodeManager
     masterID::Union{ Missing, Int }
     localmeta::Union{ Missing, Dict{Int64, MrPhelps.WorkerMetaData} }
     computemeta::Union{ Missing, Dict{Int64, MrPhelps.WorkerMetaData} }
+    machinenodemap::Union{ Missing, Dict{String, Vector{Int64}} }
 end
 
 """
@@ -20,7 +21,8 @@ function NodeManager()
     local_metadata, compute_metadata = MrPhelps.worker_meta()
     return NodeManager( first( [ k for (k,v) in local_metadata ] ),
                         local_metadata,
-                        compute_metadata)
+                        compute_metadata,
+                        availablemachines( compute_metadata ))
 end
 
 """
@@ -36,11 +38,31 @@ function update!(nm::NodeManager)
                 " `update!(nm::NodeManager)`."
     end
     local_metadata, compute_metadata = MrPhelps.worker_meta()
-    nm.masterID  = first( [ k for (k,v) in local_metadata ] )
-    nm.localmeta = local_metadata
-    nm.computemeta = compute_metadata
+    nm.masterID         = first( [ k for (k,v) in local_metadata ] )
+    nm.localmeta        = local_metadata
+    nm.computemeta      = compute_metadata
+    nm.machinenodemap   = availablemachines(compute_metadata)
     return nm
 end
+
+
+"""
+    availablemachines( computemetadict::Dict )
+
+Takes a dictionary of process ids mapped to WorkerMetaData(`computemetadict`) as input and returns a
+dictionary of whose keys are unique hosts and whose values are vectors of their Process ID numbers.
+
+"""
+function availablemachines( computemetadict::Dict )
+    addresses = unique( [ addresses for ( id, worker_meta ) in computemetadict ] )
+    groupedby = Dict()
+    for addr in addresses
+        groupedby[ addr ] = [ k for (k, meta) in computemetadict if ( addresses == addr ) ]
+    end
+    return groupedby
+end
+
+availablemachines( computemetadict::Missing ) = missing
 
 """
     availablemachines( nm::NodeManager )
@@ -53,7 +75,7 @@ function availablemachines( nm::NodeManager )
     addresses = unique( [ worker_meta.address for ( id, worker_meta ) in nm.computemeta ] )
     groupedby = Dict()
     for addr in addresses
-        groupedby[addr] = [ meta.address for (k, meta) in nm.computemeta if ( meta.address == addr ) ]
+        groupedby[addr] = [ k for (k, meta) in nm.computemeta if ( meta.address == addr ) ]
     end
     return groupedby
 end
