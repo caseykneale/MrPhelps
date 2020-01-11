@@ -17,23 +17,14 @@ RemoteNode  = @async addprocs( [ ( "optics@192.168.0.14", 2 ) ], tunnel = true, 
 
 @everywhere begin
     using Pkg
-    pth = ""
-    if isdir( "/home/caseykneale/" )
-        pth = "/home/caseykneale/Desktop/Playground/MrPhelps/"
-    else
-        pth = "/home/optics/Playground/MrPhelps/"
-    end
+    pth = "/home/caseykneale/Desktop/Playground/MrPhelps/"
+    pth = isdir( "/home/caseykneale/" ) ? pth : "/home/optics/Playground/MrPhelps/"
     Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path=pth))
-    using MrPhelps
 end
+@everywhere using MrPhelps
 
-#@everywhere using MrPhelps
 #Update our node manager, we've added connections
-update!(nm);
-
-xy = 3
-cpuspd = @spawnat xy Sys.cpu_info()[1].speed
-c = fetch(cpuspd)
+update!(nm)
 
 #Grok the machines we have available to our node manager...
 machine_to_ids = availablemachines( nm )
@@ -61,39 +52,3 @@ connect!(actiongraph, :Prod1, :Prod2)
 attach_node!(actiongraph, :final => Agent( println, ["Local"] ) )
 
 #well we basically have a graph now...
-
-
-cpuinfo = Sys.cpu_info()
-cores_available = length(Sys.cpu_info())
-typeof(Sys.cpu_info()[1].speed)
-
-@sync @distributed for i in 1:nprocs()
-    println(Sys.cpu_info())
-end
-
-#
-# println("...")
-
-# @everywhere coin_toss() = rand() > 0.5
-# f = @spawnat 5 coin_toss()
-# fetch(f)
-#
-# procs()
-# nprocs()
-# procs()
-# workers()
-# nworkers()
-# myid()
-# Base.@kwdef mutable struct Foo
-#     x::Int = 0
-#     y::Int = 1
-# end
-
-if nprocs() > 1   # Ensure at least one new worker is available
-    # perform distributed execution
-    #@distributed coin_toss()
-    pmap(i -> println("I'm worker $(myid()), working on i=$i"), 1:10)
-    @sync @distributed for i in 1:10
-        println("I'm worker $(myid()), working on i=$i")
-    end
-end
