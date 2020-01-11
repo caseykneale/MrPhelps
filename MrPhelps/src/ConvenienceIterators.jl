@@ -3,6 +3,7 @@
 
 Interleaves two vectors of strings. `x` comes before `y`.
 Shout out: Thanks, Don MacMillen from Slack!
+
 """
 function interleavestrings(x::Vector{<:AbstractString}, y::Vector{<:AbstractString})
     lenx, leny = length(x), length(y)
@@ -19,6 +20,14 @@ struct Expand
     productiter::Base.Iterators.ProductIterator
 end
 
+"""
+    Expand( str::String, replace_map::Dict{String,Vector{String}} )
+
+Expand is an iterator that replaces keywords in a string, `str`, with all
+permutations in the `replace_map`. To define a keyword it must be enclosed in
+curly brackets `{...}`.
+
+"""
 function Expand( str::String, replace_map::Dict{String,Vector{String}} )
     locations, items, cuts = [], [], []
     #TODO: Char-wise search instead could be more performant?
@@ -29,7 +38,8 @@ function Expand( str::String, replace_map::Dict{String,Vector{String}} )
         push!( items, item )
     end
     #sort the order of the items found in the string by which come first!
-    sort!(locations, by = x -> first( x ) )
+    idx = sortperm(locations, by = x -> first( x ) )
+    locations = locations[idx]
     #Handle edgecase where string starts with keyword to be replaced
     ( lastloc, tag ) = locations[ 1 ]
     firstcut = ( lastloc[ 1 ] > 1 ) ? str[ 1 : ( lastloc - 1 ) ] : ""
@@ -43,7 +53,7 @@ function Expand( str::String, replace_map::Dict{String,Vector{String}} )
     ( lastloc, tag ) = locations[ end ]
     push!( cuts,  str[ ( lastloc + length( tag ) + 2 ) : end] )
 
-    return Expand( cuts, locations, Iterators.product( items... ) )
+    return Expand( cuts, locations, Iterators.product( items[idx]... ) )
 end
 
 function Base.iterate( iter::Expand, state = ( nothing ) )
