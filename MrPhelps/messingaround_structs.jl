@@ -17,19 +17,21 @@ RemoteNode  = @async addprocs( [ ( "optics@192.168.0.14", 2 ) ], tunnel = true, 
 
 @everywhere begin
     using Pkg
+    pth = ""
     if isdir( "/home/caseykneale/" )
-        Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop/Playground/MrPhelps/"))
+        pth = "/home/caseykneale/Desktop/Playground/MrPhelps/"
     else
-        Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/optics/Playground/MrPhelps/"))
+        pth = "/home/optics/Playground/MrPhelps/"
     end
+    Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path=pth))
+    using MrPhelps
 end
 
-@everywhere GetMrPhelpsDev()
 #@everywhere using MrPhelps
 #Update our node manager, we've added connections
 update!(nm);
 
-xy = 4
+xy = 3
 cpuspd = @spawnat xy Sys.cpu_info()[1].speed
 c = fetch(cpuspd)
 

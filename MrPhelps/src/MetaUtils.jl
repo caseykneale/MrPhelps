@@ -34,7 +34,6 @@ function worker_meta()
         else
             cpuspd_c = @spawnat worker.id Sys.cpu_info()[1].speed
             cpuspd = fetch(cpuspd_c)
-            println(cpuspd)
             compute_metadata[ worker.id ] = WorkerMetaData( typeof( worker.manager ),
                                                             worker.config.host,
                                                             cpuspd )
