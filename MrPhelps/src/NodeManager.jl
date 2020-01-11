@@ -43,7 +43,7 @@ function update!(nm::NodeManager)
 end
 
 """
-    determinemachines( nm::NodeManager )
+    availablemachines( nm::NodeManager )
 
 Takes a NodeManager(`nm`) as input and returns a dictionary of whose keys are
 unique hosts and whose values are vectors of their Process ID numbers.

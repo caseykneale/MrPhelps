@@ -3,6 +3,7 @@
 
 Interleaves two vectors of strings. `x` comes before `y`.
 Shout out: Thanks, Don MacMillen from Slack!
+
 """
 function interleavestrings(x::Vector{<:AbstractString}, y::Vector{<:AbstractString})
     lenx, leny = length(x), length(y)
@@ -19,6 +20,14 @@ struct Expand
     productiter::Base.Iterators.ProductIterator
 end
 
+"""
+    Expand( str::String, replace_map::Dict{String,Vector{String}} )
+
+Expand is an iterator that replaces keywords in a string, `str`, with all
+permutations in the `replace_map`. To define a keyword it must be enclosed in
+curly brackets `{...}`.
+
+"""
 function Expand( str::String, replace_map::Dict{String,Vector{String}} )
     locations, items, cuts = [], [], []
     #TODO: Char-wise search instead could be more performant?

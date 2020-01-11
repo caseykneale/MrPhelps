@@ -1,16 +1,6 @@
 using Pkg, Revise
 Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop/Playground/MrPhelps/"))
 using MrPhelps
-
-#Test Case
-tst = "simulation{name}awesome{number}.csv"
-semantics = Dict( "name"    => [ "great", "okay", "bad" ],
-                  "number"  => [ "1", "2", "3" ] )
-
-for s in Expand( tst, semantics )
-  println( s )
-end
-
 using Distributed, ClusterManagers, SharedArrays
 using LightGraphs, MetaGraphs
 using Dates, Logging
@@ -21,14 +11,31 @@ MrPhelps.greet()
 #Define NodeManager - to keep track of Distributed Hooks to all machines
 nm = NodeManager()
 #Connect to a remote box and use a core/thread on the local machine!
-LocalNode   = @async addprocs( 1; restrict = true )
+LocalNode   = @async addprocs( 2; restrict = true )
 RemoteNode  = @async addprocs( [ ( "optics@192.168.0.14", 2 ) ], tunnel = true, max_parallel = 4,
-                              exename = "/home/optics/julia-1.3.0/bin/julia", sshflags = "-vvv" )
+                              exename = "/home/optics/julia-1.3.0/bin/julia") #, sshflags = "-vvv" )
+
+@everywhere begin
+    using Pkg
+    if isdir( "/home/caseykneale/" )
+        Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop/Playground/MrPhelps/"))
+    else
+        Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/optics/Playground/MrPhelps/"))
+    end
+end
+
+@everywhere GetMrPhelpsDev()
+#@everywhere using MrPhelps
 #Update our node manager, we've added connections
 update!(nm);
+
+xy = 4
+cpuspd = @spawnat xy Sys.cpu_info()[1].speed
+c = fetch(cpuspd)
+
 #Grok the machines we have available to our node manager...
 machine_to_ids = availablemachines( nm )
-
+nm
 #                        Define Some Tasks
 function load_data(src::String)
     println("I read the file \n pscyhe I do nothing!")
@@ -51,14 +58,17 @@ connect!(actiongraph, :Prod1, :Prod2)
 #display final result
 attach_node!(actiongraph, :final => Agent( println, ["Local"] ) )
 
-
 #well we basically have a graph now...
-#Sys.cpu_info()
-# @sync @distributed for i in 1:nprocs()
-#     println(Sys.cpu_info())
-# end
-#
-# @distributed Sys.cpu_info()
+
+
+cpuinfo = Sys.cpu_info()
+cores_available = length(Sys.cpu_info())
+typeof(Sys.cpu_info()[1].speed)
+
+@sync @distributed for i in 1:nprocs()
+    println(Sys.cpu_info())
+end
+
 #
 # println("...")
 
