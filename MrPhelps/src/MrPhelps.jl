@@ -18,10 +18,10 @@ module MrPhelps
     export interleavestrings, Expand
 
     include("NodeManager.jl")
-    export NodeManager, update!, availablemachines
+    export NodeManager, update!, availablemachines, machinenames
 
-    include("ActionGraph.jl")
-    export  PlanNode, Agent, Stash, PlanGraph, query_metadata, machines,
+    include("MissionGraph.jl")
+    export  MissionNode, Agent, Stash, MissionGraph, query_metadata, machines,
             add_node!, attach_node!, addbookmark!, attach_node!, connect!
 
 end # module

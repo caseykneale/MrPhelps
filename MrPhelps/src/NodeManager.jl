@@ -65,17 +65,9 @@ end
 availablemachines( computemetadict::Missing ) = missing
 
 """
-    availablemachines( nm::NodeManager )
+    machinenames( nm::NodeManager )
 
-Takes a NodeManager(`nm`) as input and returns a dictionary of whose keys are
-unique hosts and whose values are vectors of their Process ID numbers.
+Takes a NodeManager(`nm`) as input and returns a vector of available machine names.
 
 """
-function availablemachines( nm::NodeManager )
-    addresses = unique( [ worker_meta.address for ( id, worker_meta ) in nm.computemeta ] )
-    groupedby = Dict()
-    for addr in addresses
-        groupedby[addr] = [ k for (k, meta) in nm.computemeta if ( meta.address == addr ) ]
-    end
-    return groupedby
-end
+machinenames( nm::NodeManager ) = return [k for k in keys(nm.machinenodemap)]
