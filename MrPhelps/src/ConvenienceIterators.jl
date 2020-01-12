@@ -1,3 +1,5 @@
+abstract type FileIterator end
+
 """
     interleavestrings(x::Vector{<:AbstractString}, y::Vector{<:AbstractString})
 
@@ -14,7 +16,7 @@ function interleavestrings(x::Vector{<:AbstractString}, y::Vector{<:AbstractStri
     return join(result)
 end
 
-struct Expand
+struct Expand <: FileIterator
     statictxt::Vector{String}
     mapping::Any
     productiter::Base.Iterators.ProductIterator
@@ -66,5 +68,5 @@ function Base.iterate( iter::Expand, state = ( nothing ) )
         end
         subiter, state = collect( nextiter )
     end
-    return interleavestrings(iter.statictxt, collect(subiter)) , state
+    return interleavestrings( iter.statictxt, collect( subiter ) ), state
 end

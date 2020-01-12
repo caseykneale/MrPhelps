@@ -5,7 +5,6 @@ using Distributed, ClusterManagers, SharedArrays
 using Dates
 
 localonly = true
-
 #                        Connect Machines!
 #First a user needs to define machines it has access too...
 MrPhelps.greet()
@@ -41,23 +40,27 @@ update!(nm)
 nm.machinenodemap
 
 #                        Define Some Tasks
-function load_data(src::String)
+function clean_data(src::String)
     println("I read the file \n pscyhe I do nothing!")
 end
 
+Local  = "127.0.0.1"
+Remote = "optics@192.168.0.14"
+
 mission = MissionGraph()
 #Add an unconnected node to the graph
-add_node!(mission, Stash("/home/caseykneale/Desktop/megacsv.csv", ["SSH"] ) )
+add_node!(mission, Stash("/home/caseykneale/Desktop/megacsv.csv", [ Remote ] ) )
 #Add a new node to the graph but connect it to the last node laid down
-attach_node!(mission, Agent( load_data, ["SSH"] ) )
-attach_node!(mission, :Prod1 => Agent( prod, ["SSH","Local"] ) )
+attach_node!(mission, Agent( clean_data, [ Remote ] ) )
+attach_node!(mission, :Prod1 => Agent( prod, [ Remote ] ) )
+
+println( keys( nm.machinenodemap ) )
 
 #basically repeat the same chain but this is isolated...
-add_node!(mission, Stash("/home/caseykneale/Desktop/megacsv2.csv", ["SSH"] ) )
-attach_node!(mission, Agent( load_data, ["SSH"] ) )
-attach_node!(mission, :Prod2 => Agent( prod, ["SSH","Local"] ) )
-
-connect!(mission, :Prod1, :Prod2)
+# add_node!(mission, Stash("/home/caseykneale/Desktop/megacsv2.csv", [ Remote ] ) )
+# attach_node!(mission, Agent( clean_data, [ Remote ] ) )
+# attach_node!(mission, :Prod2 => Agent( prod, [ Remote ] ) )
+# connect!(mission, :Prod1, :Prod2)
 
 #display final result
 attach_node!(mission, :final => Agent( println, ["Local"] ) )
@@ -71,6 +74,8 @@ attach_node!(mission, :final => Agent( println, ["Local"] ) )
 
 #lets crawl the graph!find all parent/source nodes
 sources = terminalnodes( mission.g )[ :parentnodes ]
+
+nm.machinenodemap
 
 #4) Something in the middle: User constrains resources to machines, user dictates
 #   minimum & maximum allowance for parallelism on a given taskset, user chooses

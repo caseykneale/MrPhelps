@@ -7,7 +7,7 @@ Base.@kwdef struct Agent <: MissionNode
 end
 
 Base.@kwdef struct Stash <: MissionNode
-    src::String
+    src::Union{ String, FileIterator, Vector{ String } }
     machines::Vector{ String }
     cores::Int = 1
 end

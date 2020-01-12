@@ -3,7 +3,7 @@ module MrPhelps
 
     greet() = print("Your mission, should you choose to accept it, is to distribute all the tasks..."*
                     "As always, should you or any of your nodes be interrupted or " *
-                    "killed, The Secretary will log any knowledge of your actions. This program"
+                    "killed, The Secretary will log any knowledge of your actions. This program" *
                     " will hopefully not self-destruct in ten seconds.\n Good luck,")
 
     using Distributed, ClusterManagers
@@ -14,7 +14,7 @@ module MrPhelps
     export WorkerMetaData, worker_meta
 
     include("ConvenienceIterators.jl")
-    export interleavestrings, Expand
+    export FileIterator, interleavestrings, Expand
 
     include("NodeManager.jl")
     export NodeManager, update!, availablemachines, machinenames
