@@ -30,7 +30,7 @@ curly brackets `{...}`.
 """
 function Expand( str::String, replace_map::Dict{String,Vector{String}} )
     locations, items, cuts = [], [], []
-    #TODO: Char-wise search instead could be more performant?
+    #TODO: Char-wise/Trie search instead could be more performant?
     for ( curkey, item ) in replace_map
         firstunitofallmatches = first.( findall( "{" * curkey * "}", str ) ) .=> curkey
         @assert(length(firstunitofallmatches) == 1, "Cannot use keyword $curkey twice in expand statement.")

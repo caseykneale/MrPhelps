@@ -1,30 +1,31 @@
 abstract type MissionNode ; end
 
-struct Agent <: MissionNode
+Base.@kwdef struct Agent <: MissionNode
     fn::Function
     machines::Vector{ String }
+    cores::Int = 1
 end
 
-struct Stash <: MissionNode
+Base.@kwdef struct Stash <: MissionNode
     src::String
     machines::Vector{ String }
+    cores::Int = 1
 end
 
-mutable struct MissionGraph
-    g::SimpleDiGraph
-    nv::Int
-    meta::Dict
-    bookmarks::Dict
+Base.@kwdef mutable struct MissionGraph
+    g::SimpleDiGraph    = SimpleDiGraph()
+    nv::Int             = 0
+    meta::Dict          = Dict()
+    bookmarks::Dict     = Dict()
 end
 
-MissionGraph() = MissionGraph( SimpleDiGraph(), 0, Dict(), Dict() )
+"""
+    enforceDAG( G::SimpleDiGraph )
 
+Performs a quick check to test whether the graph `G` contains no cycles.
+
+"""
 enforceDAG( G::SimpleDiGraph ) = @assert( simplecyclescount(G, 10) == 0, "Graph is no longer a DAG! Please use bookmarking features to maintain your workflow." )
-
-function query_metadata( MG::MissionGraph, category::Symbol, valuestr::String )
-    result = [ vtx for ( vtx, nn ) in MG.meta if nn[ category ] == valuestr]
-    return result
-end
 
 machines( MG::MissionGraph, vtx::Int )     = MG.meta[ vtx ].machines
 
@@ -83,14 +84,27 @@ function connect!( graph::MissionGraph, to_str::Symbol, from_str::Symbol )
     enforceDAG(graph.g)#ensure we have a DAG
 end
 
+"""
+    terminalnodes( G::SimpleDiGraph )
 
-termnodes(g::SimpleDiGraph) = findall( outdegree(g) .== 0 )
+Given an input SimpleDiGraph, return a vector of parent vertices.
+
+"""
+terminalnodes(g::SimpleDiGraph) = findall( outdegree(g) .== 0 )
+
+"""
+    parentnodes( G::SimpleDiGraph )
+
+Given an input SimpleDiGraph, return a vector of parent vertices.
+
+"""
 parentnodes(g::SimpleDiGraph) = findall( indegree(g) .== 0 )
+
 """
     terminalnodes( G::SimpleDiGraph )
 
 Given an input SimpleDiGraph, return a dictionary of parent and terminal vertices.
 
 """
-terminalnodes( G::SimpleDiGraph ) =  Dict(  :parentnodes => parentnodes( G ),
-                                            :terminalnodes => termnodes( G ) )
+terminatingnodes( G::SimpleDiGraph ) =  Dict(   :parentnodes => parentnodes( G ),
+                                                :terminalnodes => terminalnodes( G ) )

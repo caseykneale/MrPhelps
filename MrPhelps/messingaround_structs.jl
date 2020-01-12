@@ -72,11 +72,19 @@ attach_node!(mission, :final => Agent( println, ["Local"] ) )
 #lets crawl the graph!find all parent/source nodes
 sources = terminalnodes( mission.g )[ :parentnodes ]
 
+#4) Something in the middle: User constrains resources to machines, user dictates
+#   minimum & maximum allowance for parallelism on a given taskset, user chooses
+#   to memoize data transforms or pass them to new locations, user writes good code
+#   that is parallel enough. When resources free up, or a new task is emitted, workers
+#   will greedily scramble to finish that task. All tasks are of equal importance.
+
 #Need a handler to emit that a task should start
 #Need a distributed File Reading thing...
 #Need a handler to emit when a task is done
 #Need an error handler...
 #Need a way to coelesce data
+
+
 
 
 mission
