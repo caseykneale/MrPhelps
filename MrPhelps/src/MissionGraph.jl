@@ -2,17 +2,21 @@ abstract type MissionNode ; end
 
 Base.@kwdef struct Agent <: MissionNode
     fn::Function
-    machines::Vector{ String }
-    minworkers::Int = 1
-    maxworkers::Int = 1
+    machines::Vector{String}
+    minworkers::Int
+    maxworkers::Int
 end
+Agent( fn::Function, machines::Vector{String} ) = Agent( fn, machines, 1, 1 )
+Agent( fn::Function, machines::Vector{String}, maxworkers::Int ) = Agent( fn, machines, 1, maxworkers )
 
 Base.@kwdef struct Stash <: MissionNode
-    src::Union{ String, FileIterator, Vector{ String } }
-    machines::Vector{ String }
-    minworkers::Int = 1
-    maxworkers::Int = 1
+    src::Union{String,FileIterator,Vector{String}}
+    machines::Vector{String}
+    minworkers::Int
+    maxworkers::Int
 end
+Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String} ) = Stash( src, machines, 1, 1 )
+Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String}, maxworkers::Int ) = Stash( src, machines, 1, maxworkers )
 
 Base.@kwdef mutable struct MissionGraph
     g::SimpleDiGraph    = SimpleDiGraph()

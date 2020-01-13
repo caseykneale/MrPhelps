@@ -36,18 +36,13 @@ mission = MissionGraph()
 #Add an unconnected node to the graph
 add_node!(mission, Stash("/home/caseykneale/Desktop/megacsv.csv", [ Remote ] ) )
 #Add a new node to the graph but connect it to the last node laid down
-attach_node!(mission, Agent( clean_data, [ Remote ] ) )
+attach_node!(mission, Agent( sum, [ Remote ] ) )
 #Add another new node, but give it a bookmark so we can find it later!
-attach_node!(mission, :Prod1 => Agent( prod, [ Remote ] ) )
-
-#basically repeat the same chain but this is isolated...
-# add_node!(mission, Stash("/home/caseykneale/Desktop/megacsv2.csv", [ Remote ] ) )
-# attach_node!(mission, Agent( clean_data, [ Remote ] ) )
-# attach_node!(mission, :Prod2 => Agent( prod, [ Remote ] ) )
-# connect!(mission, :Prod1, :Prod2)
-
-#display final result
-attach_node!(mission, :final => Agent( println, ["Local"] ) )
+attach_node!(mission, :prod => Agent( prod, [ Remote ] ) )
+#Look we can add another new node unattached to anything
+add_node!(mission, :final => Agent( println, [Local] ) )
+#And now we can connect them
+connect!(mission, :prod, :final)
 
 #well we basically have a graph now...
 # struct MissionManager
@@ -59,7 +54,7 @@ attach_node!(mission, :final => Agent( println, ["Local"] ) )
 #lets crawl the graph!find all parent/source nodes
 sources = terminalnodes( mission.g )[ :parentnodes ]
 
-nm.machinenodemap
+println( nm.machinenodemap )
 
 #4) Something in the middle: User constrains resources to machines, user dictates
 #   minimum & maximum allowance for parallelism on a given taskset, user chooses
