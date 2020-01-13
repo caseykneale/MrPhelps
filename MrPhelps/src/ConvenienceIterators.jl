@@ -71,6 +71,11 @@ function Base.iterate( iter::Expand, state = ( nothing ) )
     return interleavestrings( iter.statictxt, collect( subiter ) ), state
 end
 
+mutable struct VariableGlob
+    parsedsegments::Vector{String}
+    parsedvariables::Vector{String}
+    parsed_values::Vector{Any}#TODO: Type specific...
+end
 
 """
     VariableGlob( path::String )
@@ -79,7 +84,6 @@ Given an input `path`, parse for variable names enclosed in curly brackets.
 Returns a tuple of nonvariable elements of the path, and variable elements.
 
 """
-
 function VariableGlob( path::String, expression::String )
     strlen          = length( expression )
     isenclosed      = false
@@ -116,13 +120,12 @@ function VariableGlob( path::String, expression::String )
             end
         end
     end
-    println(variablenames)
     #Safety checks
     @assert( length(unique(variablenames)) == length(variablenames), "Replicate variable names found in string. Cannot proceed." )
     @assert( all( length.(variablenames) .>= 1 ), "Variable name cannot be less then 1 character long!" )
     @assert( ( length(variablenames) < length(segments) ), "Filename cannot end with a wildcard." )
     #Clean up our understanding of the root directory...
-    filematches = glob( join(segments, "*"), datadir  )
+    filematches = glob( join(segments, "*"), path  )
     #Now that we have a list of matching file names let's get their metadata
     segmentlengths = length.( segments )
     variables_count = length(variablenames)
@@ -140,7 +143,6 @@ function VariableGlob( path::String, expression::String )
                     findnextsegmatch = match( Regex( "(" * segments[s + 1] * ")s?" ), filematch)
                     if !isnothing(findnextsegmatch)
                         findnextseg = findnextsegmatch.offset - 1
-                        #println("$(variablenames[ s ]) \t\t $idx \t\t $findnextseg ")
                     end
                 end
                 tmpdict[ variablenames[ s ] ] = filematch[ (idx+1):(findnextseg) ]
@@ -149,5 +151,5 @@ function VariableGlob( path::String, expression::String )
         end
         push!(template, tmpdict)
     end
-    return template, segments, variablenames
+    return VariableGlob( segments, variablenames, template )
 end

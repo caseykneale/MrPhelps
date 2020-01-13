@@ -12,7 +12,6 @@ fullpath = Base.joinpath(datadir, filefmt)
 fauxfilenames = Expand( fullpath, Dict( "experiment" => [ "A", "B", "C" ],
                                         "num"     => [ "1", "2" ] )
                       )
-
 #Make some random 3 column CSV's and save them to disk via the expand call
 for filename in fauxfilenames
     column_names = [ :name, :rand, :randn ]
@@ -24,4 +23,6 @@ for filename in fauxfilenames
     CSV.write(filename, df)
 end
 
-var_maps, parsedsegments, parsedvariables = VariableGlob( datadir, filefmt )
+mock_data_meta = VariableGlob( datadir, filefmt )
+
+println.( mock_data_meta.parsed_values )
