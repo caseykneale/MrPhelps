@@ -6,11 +6,11 @@ using CSV, DataFrames, Random
 const entries = 11
 
 datadir  = "Playground/MrPhelps/data/"
-filefmt  = "expr_{experiment}_number_{number}.csv"
+filefmt  = "expr_{experiment}_number_{num}.csv"
 fullpath = Base.joinpath(datadir, filefmt)
 
 fauxfilenames = Expand( fullpath, Dict( "experiment" => [ "A", "B", "C" ],
-                                        "number"     => [ "1", "2" ] )
+                                        "num"     => [ "1", "2" ] )
                       )
 
 #Make some random 3 column CSV's and save them to disk via the expand call
@@ -24,46 +24,4 @@ for filename in fauxfilenames
     CSV.write(filename, df)
 end
 
-function VariableGlob( path::String )
-    strlen          = length( path )
-    isenclosed      = false
-    segments        = []
-    variablenames   = []
-    cursor          = 1
-    variable_cursor = 0
-
-    for (i, chr) in enumerate( collect( path ) )
-        if chr == '{'
-            if !isenclosed
-                if i > 1
-                    push!(segments, path[ cursor : (i - 1 ) ] )
-                    variable_cursor = i
-                end
-                isenclosed = true
-            else
-                @error( "Enclosing symbol `{` found without matching `}`. \n Only single nested wild cards supported." )
-            end
-        elseif ( chr == '}' )
-            if isenclosed
-                isenclosed = false
-                cursor = i + 1
-                push!(variablenames, path[ (variable_cursor+1) : (i-1)] )
-            else
-                @error( "Enclosing symbol `}` found without matching `{`." )
-            end
-        elseif i == strlen
-            if !isenclosed
-                push!(segments, path[ cursor : strlen ] )
-            else
-                @error( "Enclosing symbol `{` found without matching `}`." )
-            end
-        end
-    end
-
-    @assert( length(unique(variablenames)) == length(variablenames), "Replicate variable names found in string. Cannot proceed." )
-
-    return segments, variablenames
-end
-
-
-VariableGlob( fullpath )
+tip, seg, var = VariableGlob( datadir,"{apples}" * filefmt  )

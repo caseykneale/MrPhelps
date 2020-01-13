@@ -3,13 +3,15 @@ abstract type MissionNode ; end
 Base.@kwdef struct Agent <: MissionNode
     fn::Function
     machines::Vector{ String }
-    cores::Int = 1
+    minworkers::Int = 1
+    maxworkers::Int = 1
 end
 
 Base.@kwdef struct Stash <: MissionNode
     src::Union{ String, FileIterator, Vector{ String } }
     machines::Vector{ String }
-    cores::Int = 1
+    minworkers::Int = 1
+    maxworkers::Int = 1
 end
 
 Base.@kwdef mutable struct MissionGraph

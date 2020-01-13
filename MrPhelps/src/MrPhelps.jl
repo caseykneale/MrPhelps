@@ -8,13 +8,13 @@ module MrPhelps
 
     using Distributed, ClusterManagers
     using LightGraphs, MetaGraphs
-    using Dates
+    using Glob, Dates
 
     include("MetaUtils.jl")
     export WorkerMetaData, worker_meta
 
     include("ConvenienceIterators.jl")
-    export FileIterator, interleavestrings, Expand
+    export FileIterator, interleavestrings, Expand, VariableGlob
 
     include("NodeManager.jl")
     export NodeManager, update!, availablemachines, machinenames

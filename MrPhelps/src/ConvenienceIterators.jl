@@ -70,3 +70,84 @@ function Base.iterate( iter::Expand, state = ( nothing ) )
     end
     return interleavestrings( iter.statictxt, collect( subiter ) ), state
 end
+
+
+"""
+    VariableGlob( path::String )
+
+Given an input `path`, parse for variable names enclosed in curly brackets.
+Returns a tuple of nonvariable elements of the path, and variable elements.
+
+"""
+
+function VariableGlob( path::String, expression::String )
+    strlen          = length( expression )
+    isenclosed      = false
+    segments, variablenames = [], []
+    cursor,   variable_cursor = 1, 1
+    #Parse the text around curly brackets, and the text inside curly brackets into
+    # 2 different vectors.
+    for (i, chr) in enumerate( collect( expression ) )
+        if chr == '{'
+            if !isenclosed
+                if i > 1
+                    push!(segments, expression[ cursor : (i - 1 ) ] )
+                    variable_cursor = i
+                else
+                    push!(segments, "" )
+                end
+                isenclosed = true
+            else
+                @error( "Enclosing symbol `{` found without matching `}`. \n Only single nested wild cards supported." )
+            end
+        elseif chr == '}'
+            if isenclosed
+                isenclosed = false
+                cursor = i + 1
+                push!( variablenames, expression[ ( variable_cursor + 1 ) : ( i - 1 ) ] )
+            else
+                @error( "Enclosing symbol `}` found without matching `{`." )
+            end
+        elseif i == strlen
+            if !isenclosed
+                push!( segments, expression[ cursor : strlen ] )
+            else
+                @error( "Enclosing symbol `{` found without matching `}`." )
+            end
+        end
+    end
+    println(variablenames)
+    #Safety checks
+    @assert( length(unique(variablenames)) == length(variablenames), "Replicate variable names found in string. Cannot proceed." )
+    @assert( all( length.(variablenames) .>= 1 ), "Variable name cannot be less then 1 character long!" )
+    @assert( ( length(variablenames) < length(segments) ), "Filename cannot end with a wildcard." )
+    #Clean up our understanding of the root directory...
+    filematches = glob( join(segments, "*"), datadir  )
+    #Now that we have a list of matching file names let's get their metadata
+    segmentlengths = length.( segments )
+    variables_count = length(variablenames)
+    template = [ ]
+    templatecount = 0
+    for filematch in filematches
+        idx = length(path)
+        matchlen = length(filematch)
+        tmpdict = Dict()
+        for ( s, seglen ) in enumerate( segmentlengths )
+            if s <= variables_count
+                idx += seglen
+                findnextseg = matchlen
+                if s < length(segments)
+                    findnextsegmatch = match( Regex( "(" * segments[s + 1] * ")s?" ), filematch)
+                    if !isnothing(findnextsegmatch)
+                        findnextseg = findnextsegmatch.offset - 1
+                        #println("$(variablenames[ s ]) \t\t $idx \t\t $findnextseg ")
+                    end
+                end
+                tmpdict[ variablenames[ s ] ] = filematch[ (idx+1):(findnextseg) ]
+                idx = findnextseg
+            end
+        end
+        push!(template, tmpdict)
+    end
+    return template, segments, variablenames
+end
