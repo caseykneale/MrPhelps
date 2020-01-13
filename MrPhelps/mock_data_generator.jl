@@ -3,7 +3,7 @@ Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop
 using MrPhelps
 using CSV, DataFrames, Random
 
-const entries = 11
+const entries = 111
 
 datadir  = "Playground/MrPhelps/data/"
 filefmt  = "expr_{experiment}_number_{num}.csv"
@@ -24,4 +24,4 @@ for filename in fauxfilenames
     CSV.write(filename, df)
 end
 
-tip, seg, var = VariableGlob( datadir,"{apples}" * filefmt  )
+var_maps, parsedsegments, parsedvariables = VariableGlob( datadir, filefmt )
