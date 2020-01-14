@@ -44,13 +44,14 @@ Add a node to a graph without any connections.
 function add_node!( graph::MissionGraph, item::MissionNode)
     add_vertex!( graph.g )
     graph.nv += 1
+    graph.meta[ graph.nv ] = item
 end
 
 function add_node!( graph::MissionGraph, item::Pair{Symbol, T} ) where {T<:MissionNode}
     add_vertex!( graph.g )
     graph.nv += 1
     addbookmark!( graph, first( item ) )
-    graph.meta[ last(item) ] = graph.nv
+    graph.meta[ graph.nv ] = last(item)
 end
 
 """

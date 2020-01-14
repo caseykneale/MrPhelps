@@ -71,3 +71,23 @@ Takes a NodeManager(`nm`) as input and returns a vector of available machine nam
 
 """
 machinenames( nm::NodeManager ) = return [k for k in keys(nm.machinenodemap)]
+
+"""
+    worker_count(nm::NodeManager, machine::String)
+
+Retrieves the number of workers allocated to a specific machine.
+
+"""
+function worker_count(nm::NodeManager, machine::String)
+    return length( nm.machinenodemap[ machine ] )
+end
+
+"""
+    total_worker_counts(nm::NodeManager, machines::Vector{String} = machinenames( nm ) )
+
+Retrieves the total number of workers in either a NodeManager instance, or in a vector of machines.
+
+"""
+function total_worker_counts(nm::NodeManager, machines::Vector{String} = machinenames( nm ) )
+    return sum( [ length( nm.machinenodemap[ machine ] ) for machine in machines ] )
+end

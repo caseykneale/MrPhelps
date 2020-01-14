@@ -17,7 +17,8 @@ module MrPhelps
     export FileIterator, interleavestrings, Expand, VariableGlob
 
     include("NodeManager.jl")
-    export NodeManager, update!, availablemachines, machinenames
+    export NodeManager, update!, availablemachines, machinenames, worker_count,
+            total_worker_counts
 
     include("MissionGraph.jl")
     export  MissionNode, Agent, Stash, MissionGraph, query_metadata, machines,

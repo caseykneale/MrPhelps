@@ -34,25 +34,29 @@ println( nm.machinenodemap )
 #                        Define Some Tasks
 mission = MissionGraph()
 #Add an unconnected node to the graph
-add_node!(mission, Stash("/home/caseykneale/Desktop/megacsv.csv", [ Remote ] ) )
+add_node!(mission, Stash("/home/caseykneale/Desktop/megacsv.csv", [ Remote ], 2 ) )
 #Add a new node to the graph but connect it to the last node laid down
 attach_node!(mission, Agent( sum, [ Remote ] ) )
 #Add another new node, but give it a bookmark so we can find it later!
 attach_node!(mission, :prod => Agent( prod, [ Remote ] ) )
-#Look we can add another new node unattached to anything
+#Look we can add another new node to the graph unattached to anything
 add_node!(mission, :final => Agent( println, [Local] ) )
-#And now we can connect them
+#And now we can connect it to something else we bookmarked!
 connect!(mission, :prod, :final)
+#We made a very simple linear chain. Yay!
 
 #well we basically have a graph now...
-# struct MissionManager
-#     mission::MissionGraph
-#     workman::WorkManager
-#     nodeman::NodeManager
-# end
+#it's time we formulate a plan: Note it's about to get hacky!
+#lets crawl the graph! Find all parent/source nodes
+sources = terminatingnodes( mission.g )[ :parentnodes ]
+worker_count( nm, Local )
+total_worker_counts( nm )
 
-#lets crawl the graph!find all parent/source nodes
-sources = terminalnodes( mission.g )[ :parentnodes ]
+mission.meta[sources[1]]
+
+
+total_worker_counts = sum( [ length( workers ) for ( name, workers ) in nm.machinenodemap ] )
+nm.machinenodemap
 
 println( nm.machinenodemap )
 
@@ -67,3 +71,9 @@ println( nm.machinenodemap )
 #Need a handler to emit when a task is done
 #Need an error handler...
 #Need a way to coelesce data
+
+# struct MissionManager
+#     mission::MissionGraph
+#     workman::WorkManager
+#     nodeman::NodeManager
+# end
