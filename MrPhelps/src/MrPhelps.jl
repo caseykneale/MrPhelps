@@ -7,7 +7,7 @@ module MrPhelps
                     " will hopefully not self-destruct in ten seconds.\n Good luck,")
 
     using Distributed, ClusterManagers
-    using LightGraphs, MetaGraphs
+    using LightGraphs, LightGraphsFlows, SparseArrays
     using Glob, Dates
 
     include("MetaUtils.jl")
@@ -23,6 +23,6 @@ module MrPhelps
     include("MissionGraph.jl")
     export  MissionNode, Agent, Stash, MissionGraph, query_metadata, machines,
             add_node!, attach_node!, addbookmark!, attach_node!, connect!,
-            terminalnodes, terminatingnodes, parentnodes
+            terminalnodes, terminatingnodes, parentnodes, execution_paths
 
 end # module

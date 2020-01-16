@@ -45,14 +45,81 @@ add_node!(mission, :final => Agent( println, [Local] ) )
 connect!(mission, :prod, :final)
 #We made a very simple linear chain. Yay!
 
+add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv", [ Remote ], 2 ) )
+connect!(mission, :references, :prod)
+
 #well we basically have a graph now...
 #it's time we formulate a plan: Note it's about to get hacky!
 #lets crawl the graph! Find all parent/source nodes
-sources = terminatingnodes( mission.g )[ :parentnodes ]
+sources = parentnodes( mission.g )
+sinks = terminalnodes( mission.g )
+
+srclen = length(sources)
+sinklen = length(sinks)
+
+distribution_paths = execution_paths( mission )
+
+#Most naive scheme
+#   Worker starts process at a source
+#   Finishes process, alerts, scheduler, and gets next task (stay or move)
+#       After each alert, the scheduler decides what to do next.
+#       Are there available nodes for open tasks?
+#       Do we need to wait for a worker to open to complete a task?
+
+nm.machinenodemap
+
+struct Scheduler
+    mission::MissionGraph
+    nodem::NodeManager
+    nodes_tasks::Dict
+end
+
+#NodeManager maps Machines to Workers
+#MissionGraph links Tasks to Tasks, and Tasks to Workers
+#I need to link available machines to available tasks least effort way: make a map
+flip( a::Dict ) = Dict( Iterators.flatten( [ v .=> k for (k,v) in a ] ) )
+flip( nm.machinenodemap )
+
+
+
+
+
+Pkg.add("LightGraphsFlows")
+using Clp: ClpSolver # use your favorite LP solver here
+using LightGraphs, LightGraphsFlows
+using SparseArrays
+g = DiGraph(5) # Create a flow-graph
+add_edge!(g, 1, 2)
+add_edge!(g, 2, 3)
+add_edge!(g, 3, 4)
+add_edge!(g, 5, 2)
+
+w = zeros(5,5)
+w[1,2] = 1
+w[2,3] = 1.
+w[3,4] = 1.
+w[5,2] = 0.1
+# v2 -> sink have demand of one
+demand = spzeros(5,5)
+demand[3,4] = 1
+demand[5,4] = 1
+capacity = ones(5,5)
+flow = mincost_flow(g, capacity, demand, w, ClpSolver(), 1, 4)
+flow = mincost_flow(g, capacity, demand, w, ClpSolver(), 5, 4)
+
+
+#function taskwithany()
+for ( task_number, task ) in mission.meta
+    machines_for_task = task.machines
+    workers_available = map( x -> nm.machinenodemap[ x ], machines_for_task )
+    task.min_workers
+end
+#end
+
+
+
 worker_count( nm, Local )
 total_worker_counts( nm )
-
-mission.meta[sources[1]]
 
 
 total_worker_counts = sum( [ length( workers ) for ( name, workers ) in nm.machinenodemap ] )

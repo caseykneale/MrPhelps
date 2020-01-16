@@ -1,22 +1,24 @@
 abstract type MissionNode ; end
 
-Base.@kwdef struct Agent <: MissionNode
+Base.@kwdef mutable struct Agent <: MissionNode
     fn::Function
     machines::Vector{String}
-    minworkers::Int
-    maxworkers::Int
+    min_workers::Int
+    max_workers::Int
+    dispatched_workers::Vector{Int}
 end
-Agent( fn::Function, machines::Vector{String} ) = Agent( fn, machines, 1, 1 )
-Agent( fn::Function, machines::Vector{String}, maxworkers::Int ) = Agent( fn, machines, 1, maxworkers )
+Agent( fn::Function, machines::Vector{String} ) = Agent( fn, machines, 1, 1, [] )
+Agent( fn::Function, machines::Vector{String}, maxworkers::Int ) = Agent( fn, machines, 1, maxworkers, [] )
 
-Base.@kwdef struct Stash <: MissionNode
+Base.@kwdef mutable struct Stash <: MissionNode
     src::Union{String,FileIterator,Vector{String}}
     machines::Vector{String}
-    minworkers::Int
-    maxworkers::Int
+    min_workers::Int
+    max_workers::Int
+    dispatched_workers::Vector{Int}
 end
-Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String} ) = Stash( src, machines, 1, 1 )
-Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String}, maxworkers::Int ) = Stash( src, machines, 1, maxworkers )
+Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String} ) = Stash( src, machines, 1, 1, [] )
+Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String}, maxworkers::Int ) = Stash( src, machines, 1, maxworkers,[] )
 
 Base.@kwdef mutable struct MissionGraph
     g::SimpleDiGraph    = SimpleDiGraph()
@@ -115,3 +117,21 @@ Given an input SimpleDiGraph, return a dictionary of parent and terminal vertice
 """
 terminatingnodes( G::SimpleDiGraph ) =  Dict(   :parentnodes => parentnodes( G ),
                                                 :terminalnodes => terminalnodes( G ) )
+
+"""
+    execution_paths( mission::MissionGraph )
+
+Given an input MissionGraph, return a vector of (`source`, `sink`) 2-tuples.
+
+"""
+function execution_paths( mission::MissionGraph )
+    sources = parentnodes(mission.g)
+    sinks   = terminalnodes(mission.g)
+    srclen, sinklen = length(sources), length(sinks)
+    distanceuppertrimatrix = spzeros(mission.nv, mission.nv )
+    for (r, src) in enumerate(sources), (k,sink) in enumerate(sinks)
+        distanceuppertrimatrix[src,sink] = has_path( mission.g, src , sink )
+    end
+    #find all possible execution paths
+    return Tuple.( findall( distanceuppertrimatrix .> 0) )
+end
