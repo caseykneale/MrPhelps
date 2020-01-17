@@ -1,6 +1,6 @@
 using Pkg
 Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop/Playground/MrPhelps/"))
-using MrPhelps, Distributed, ClusterManagers, SharedArrays, Dates
+using MrPhe[ mission.meta[src] for src in sources ]lps, Distributed, ClusterManagers, SharedArrays, Dates
 
 localonly = true
 #                        Connect Machines!
@@ -51,20 +51,41 @@ connect!(mission, :references, :prod)
 #well we basically have a graph now...
 #it's time we formulate a plan: Note it's about to get hacky!
 #lets crawl the graph! Find all parent/source nodes
+workersavailable = total_worker_counts( nm )
+
 sources = parentnodes( mission.g )
+source_demand = [ mission.meta[src].min_workers for src in sources ]
+if sum(source_demand) < workersavailable
+    @warn("More parent node workers requested ($source_demand) then workers available($workersavailable)")
+end
+#Distribute jobs to workers by priority
+sources_by_priority = [ ( src, mission.meta[src].min_workers, mission.meta[src].priority ) for src in sources]
+source_demand_by_priority = sort( sources_by_priority, by = x -> last(x) )
+#Prototype has no intelligence as to what gets chosen first.
+#Could easily use some graph theory here
+#Goal start as many jobs as possible...
+worker_queue = Dict( [ [ worker, 0 ] for worker in 1:workersavailable  ] )
+for [src, priority] in source_demand_by_priority
+
+end
+
 sinks = terminalnodes( mission.g )
 
 srclen = length(sources)
 sinklen = length(sinks)
 
 distribution_paths = execution_paths( mission )
-
-#Most naive scheme
+##########################################################################
+# Most naive scheme
 #   Worker starts process at a source
 #   Finishes process, alerts, scheduler, and gets next task (stay or move)
 #       After each alert, the scheduler decides what to do next.
 #       Are there available nodes for open tasks?
 #       Do we need to wait for a worker to open to complete a task?
+##########################################################################
+# Find each flow from each parent to it's respective terminal
+
+
 
 nm.machinenodemap
 

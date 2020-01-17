@@ -2,6 +2,7 @@ struct WorkerMetaData
     workertype::Type
     address::Union{Missing, String}
     CPU_speed::Int32
+    RAM_available::UInt64
     #port::Int
 end
 
@@ -20,21 +21,25 @@ function worker_meta()
         #Handle special case of master node
         if isa( worker, Distributed.LocalProcess )
             try
+                ram = Sys.free_memory()
                 cpuspd = Sys.cpu_info()[1].speed
                 local_metadata[ worker.id ]   = WorkerMetaData( Distributed.LocalProcess,
-                                                                worker.bind_addr, cpuspd )
+                                                                worker.bind_addr, cpuspd, ram )
             catch err
                 if isa(err, UndefRefError)
+                    ram = Sys.free_memory()
                     cpuspd = Sys.cpu_info()[1].speed
                     local_metadata[ worker.id ]   = WorkerMetaData( Distributed.LocalProcess,
-                                                                    missing, cpuspd  )
+                                                                    missing, cpuspd, ram  )
                 end
             end
         else
             cpuspd_c = @spawnat worker.id Sys.cpu_info()[1].speed
             cpuspd = fetch(cpuspd_c)
+            ram_c = @spawnat worker.id Sys.free_memory()
+            ram = fetch(ram)
             compute_metadata[ worker.id ] = WorkerMetaData( typeof( worker.manager ),
-                                                            worker.config.host, cpuspd )
+                                                            worker.config.host, cpuspd, ram )
         end
     end
     if length(compute_metadata) == 0
