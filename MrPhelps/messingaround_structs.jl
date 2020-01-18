@@ -1,6 +1,6 @@
 using Pkg
 Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop/Playground/MrPhelps/"))
-using MrPhe[ mission.meta[src] for src in sources ]lps, Distributed, ClusterManagers, SharedArrays, Dates
+using MrPhelps, Distributed, ClusterManagers, SharedArrays, Dates
 
 localonly = true
 #                        Connect Machines!
@@ -51,23 +51,64 @@ connect!(mission, :references, :prod)
 #well we basically have a graph now...
 #it's time we formulate a plan: Note it's about to get hacky!
 #lets crawl the graph! Find all parent/source nodes
-workersavailable = total_worker_counts( nm )
+function update_tasks(nm::NodeManager, mission::MissionGraph)
+    workersavailable = total_worker_counts( nm )
+    worker_queue = Dict( [ worker => 0  for (worker,tmp) in nm.computemeta  ] )
 
-sources = parentnodes( mission.g )
-source_demand = [ mission.meta[src].min_workers for src in sources ]
-if sum(source_demand) < workersavailable
-    @warn("More parent node workers requested ($source_demand) then workers available($workersavailable)")
-end
-#Distribute jobs to workers by priority
-sources_by_priority = [ ( src, mission.meta[src].min_workers, mission.meta[src].priority ) for src in sources]
-source_demand_by_priority = sort( sources_by_priority, by = x -> last(x) )
-#Prototype has no intelligence as to what gets chosen first.
-#Could easily use some graph theory here
-#Goal start as many jobs as possible...
-worker_queue = Dict( [ [ worker, 0 ] for worker in 1:workersavailable  ] )
-for [src, priority] in source_demand_by_priority
+    sources = parentnodes( mission.g )
+    source_demand = [ mission.meta[src].min_workers for src in sources ]
+    if sum(source_demand) < workersavailable
+        @warn("More parent node workers requested ($source_demand) then workers available($workersavailable)")
+    end
+    #Distribute jobs to workers by priority
+    sources_by_priority = [ ( src, mission.meta[src].min_workers, mission.meta[src].priority ) for src in sources]
+    source_demand_by_priority = sort( sources_by_priority, by = x -> last(x) )
+    #Satisfy minimum number of workers
+    #Loop over sources, demand their minimum requirements be met
+    for src_idx in 1 : length( source_demand_by_priority )
+        src, demand, priority = source_demand_by_priority[ src_idx ]
+        if demand > 0
+            #Loop over available workers
+            for worker_idx in keys( worker_queue )
+                #ensure the machine the task is bound too matches the worker
+                if nm.computemeta[ worker_idx].address in mission.meta[ src ].machines
+                    worker_queue[ worker_idx ] = [ worker, worker_idx ]
+                    source_demand_by_priority[ src_idx ][2] -= 1
+                end
+            end
+        end
+    end
+    #Untested
+    source_demand = [ mission.meta[src].max_workers - mission.meta[src].min_workers for src in sources ]
+    if workersavailable > sum( values( worker_queue ) .> 0 )
+        source_demand_by_priority = sort( sources_by_priority, by = x -> last(x) )
+        #Loop over sources, and see if the maximum requirements can be met
+        for src_idx in 1 : length( source_demand_by_priority )
+            src, demand, priority = source_demand_by_priority[ src_idx ]
+            #Loop over available workers
+            if demand > 0
+                for worker_idx in keys( worker_queue )
+                    if nm.computemeta[ worker_idx].address in mission.meta[ src ].machines
+                        worker_queue[ worker_idx ] = [ worker, worker_idx ]
+                        source_demand_by_priority[ src_idx ][2] -= 1
+                    end
+                end
+            end
+        end
+    end
 
+    return worker_queue
 end
+
+
+update_tasks(nm, mission)
+
+
+worker_queue
+source_demand_by_priority
+
+
+mission.meta
 
 sinks = terminalnodes( mission.g )
 

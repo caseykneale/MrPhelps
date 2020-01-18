@@ -37,7 +37,7 @@ function worker_meta()
             cpuspd_c = @spawnat worker.id Sys.cpu_info()[1].speed
             cpuspd = fetch(cpuspd_c)
             ram_c = @spawnat worker.id Sys.free_memory()
-            ram = fetch(ram)
+            ram = fetch(ram_c)
             compute_metadata[ worker.id ] = WorkerMetaData( typeof( worker.manager ),
                                                             worker.config.host, cpuspd, ram )
         end
