@@ -6,14 +6,6 @@ mutable struct Scheduler
     worker_future  ::Dict{ Int, Future }
 end
 
-@enum WORKER_STATE begin
-    available   = 0
-    ready       = 1
-    launched    = 2
-    hasdata     = 3
-    failed      = 4
-end
-
 """
     Scheduler( nm::NodeManager, mission::MissionGraph )
 
@@ -50,9 +42,11 @@ function execute_mission( sc::Scheduler )
             worker_state[ worker ] = WORKER_STATE.ready
             try
                 if isa( sc.mission.meta[ task ], Stash )
+                    #if the current task is a stash, we need to handle iteration over
+                    #collections and their state in the scheduler.
                     @async worker_state[ future ] = @spawnat worker myid()
                 else
-                    @async worker_state[ future ] = @spawnat worker myid()
+                    @async worker_state[ future ] = @spawnat worker sc.mission.meta[ task ].fn
                 end
                 worker_state[ worker ] = WORKER_STATE.launched
             catch

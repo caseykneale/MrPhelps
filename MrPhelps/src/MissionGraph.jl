@@ -1,7 +1,7 @@
 abstract type MissionNode ; end
 
 Base.@kwdef mutable struct Agent <: MissionNode
-    fn::Function
+    fn::Union{ Thunk, Function }
     machines::Vector{String}
     priority::Int
     min_workers::Int
@@ -13,7 +13,7 @@ Agent( fn::Function, machines::Vector{String}, maxworkers::Int ) = Agent( fn, ma
 
 Base.@kwdef mutable struct Stash <: MissionNode
     src::Union{String,FileIterator,Vector{String}}
-    fn::Union{Nothing, Function}
+    fn::Union{Nothing, Thunk, Function}
     iteratorstate::Any
     machines::Vector{String}
     priority::Int

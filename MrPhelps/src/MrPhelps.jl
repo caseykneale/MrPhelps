@@ -10,6 +10,9 @@ module MrPhelps
     using LightGraphs, LightGraphsFlows, SparseArrays
     using Glob, Dates
 
+    include("Thunks.jl")
+    export WORKER_STATE, Thunk, thunk
+
     include("MetaUtils.jl")
     export WorkerMetaData, worker_meta
 
@@ -26,6 +29,6 @@ module MrPhelps
             terminalnodes, terminatingnodes, parentnodes, execution_paths
 
     include("TaskManager.jl")
-    export WORKER_STATE, initial_task_assignments
+    export Scheduler, initial_task_assignments
 
 end # module
