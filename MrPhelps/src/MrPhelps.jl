@@ -25,4 +25,7 @@ module MrPhelps
             add_node!, attach_node!, addbookmark!, attach_node!, connect!,
             terminalnodes, terminatingnodes, parentnodes, execution_paths
 
+    include("TaskManager.jl")
+    export WORKER_STATE, initial_task_assignments
+
 end # module

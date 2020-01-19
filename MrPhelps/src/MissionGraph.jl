@@ -90,8 +90,11 @@ function attach_node!( graph::MissionGraph, nameitempair::Pair{Symbol, T} ) wher
     enforceDAG(graph.g)#ensure we have a DAG
 end
 
-function connect!( graph::MissionGraph, to_str::Symbol, from_str::Symbol )
-    add_edge!( graph.g, graph.bookmarks[to_str], graph.bookmarks[from_str] )
+function connect!( graph::MissionGraph, from_str::Symbol, to_str::Symbol )
+    sharedmachines = intersect( graph.meta[ graph.bookmarks[ to_str ] ].machines, graph.meta[ graph.bookmarks[from_str] ].machines )
+    @assert( length( sharedmachines ) > 0, "Cannot connect bookmarked nodes($from_str & $to_str) which have no shared machines")
+    graph.meta[ graph.bookmarks[to_str] ].machines = sharedmachines
+    add_edge!( graph.g, graph.bookmarks[from_str], graph.bookmarks[to_str] )
     enforceDAG(graph.g)#ensure we have a DAG
 end
 

@@ -1,3 +1,6 @@
+flip( a::Dict ) = Dict( Iterators.flatten( [ v .=> k for (k,v) in a ] ) )
+#flip( nm.machinenodemap )
+
 struct WorkerMetaData
     workertype::Type
     address::Union{Missing, String}
