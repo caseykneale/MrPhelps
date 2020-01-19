@@ -1,7 +1,7 @@
-struct Scheduler
+mutable struct Scheduler
     mission        ::MissionGraph
     nm             ::NodeManager
-    possible_paths ::Any #ToDo dont be lazy
+    possible_paths ::Any #ToDo dont be lazy get the type list of 2 int tuples?
     worker_state   ::Dict
     worker_future  ::Dict{ Int, Future }
 end
@@ -14,6 +14,15 @@ end
     failed      = 4
 end
 
+"""
+    Scheduler( nm::NodeManager, mission::MissionGraph )
+
+Constructs a Scheduler object from a NodeManager and MissionGraph. From a high level
+the Scheduler contains mapping from which nodes pertain to which machines, and
+which tasks can be assigned to which workers. This constructor initializes the DAG, by
+finding all parent nodes in a DAG, and allocating as many resources to them as possible.
+
+"""
 function Scheduler( nm::NodeManager, mission::MissionGraph )
     # Find each flow from each parent to it's respective terminal
     sinks = terminalnodes( mission.g )
@@ -27,14 +36,27 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     return Scheduler( mission, nm, possible_paths, worker_state, worker_future )
 end
 
-function StartJob( sc::Scheduler )
+
+"""
+    execute_mission( sc::Scheduler )
+
+Begins the interpretation of a mission/DAG. This is the part where work
+actually get's done.
+
+"""
+function execute_mission( sc::Scheduler )
     @sync for ( worker, task ) in sc.worker_task_map
         if task > 0
             worker_state[ worker ] = WORKER_STATE.ready
             try
-                @async worker_state[ future ] = @spawnat worker myid()
+                if isa( sc.mission.meta[ task ], Stash )
+                    @async worker_state[ future ] = @spawnat worker myid()
+                else
+                    @async worker_state[ future ] = @spawnat worker myid()
+                end
                 worker_state[ worker ] = WORKER_STATE.launched
             catch
+                #failure to do @spawnat means something funamentally bad happened :/
                 worker_state[ worker ] = WORKER_STATE.failed
             end
         end
@@ -42,6 +64,11 @@ function StartJob( sc::Scheduler )
 
 end
 
+"""
+    initial_task_assignments(nm::NodeManager, mission::MissionGraph)
+
+Naively assigns all available workers to all tasks immediately available.
+"""
 function initial_task_assignments(nm::NodeManager, mission::MissionGraph)
     workersavailable = total_worker_counts( nm )
     worker_queue = Dict( [ worker => 0  for (worker,tmp) in nm.computemeta  ] )

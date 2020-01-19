@@ -13,14 +13,19 @@ Agent( fn::Function, machines::Vector{String}, maxworkers::Int ) = Agent( fn, ma
 
 Base.@kwdef mutable struct Stash <: MissionNode
     src::Union{String,FileIterator,Vector{String}}
+    fn::Union{Nothing, Function}
+    iteratorstate::Any
     machines::Vector{String}
     priority::Int
     min_workers::Int
     max_workers::Int
     dispatched_workers::Vector{Int}
 end
-Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String} ) = Stash( src, machines, 1, 1, 1, [] )
-Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String}, maxworkers::Int ) = Stash( src, machines, 1, 1, maxworkers,[] )
+
+Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String} ) = Stash( src, nothing, nothing, machines, 1, 1, 1, [] )
+Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String}, maxworkers::Int ) = Stash( src, nothing, nothing, machines, 1, 1, maxworkers,[] )
+Stash( src::Union{String,FileIterator,Vector{String}}, fn::Function, machines::Vector{String} ) = Stash( src, fn, nothing, machines, 1, 1, 1, [] )
+Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String}, maxworkers::Int ) = Stash( src, fn, nothing, machines, 1, 1, maxworkers,[] )
 
 Base.@kwdef mutable struct MissionGraph
     g::SimpleDiGraph    = SimpleDiGraph()
