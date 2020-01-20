@@ -28,7 +28,6 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     return Scheduler( mission, nm, possible_paths, worker_state, worker_future )
 end
 
-
 """
     execute_mission( sc::Scheduler )
 
@@ -39,19 +38,19 @@ actually get's done.
 function execute_mission( sc::Scheduler )
     @sync for ( worker, task ) in sc.worker_task_map
         if task > 0
-            worker_state[ worker ] = WORKER_STATE.ready
+            @sync worker_state[ worker ] = WORKER_STATE.ready
             try
                 if isa( sc.mission.meta[ task ], Stash )
                     #if the current task is a stash, we need to handle iteration over
                     #collections and their state in the scheduler.
-                    @async worker_state[ future ] = @spawnat worker myid()
+                    @async worker_future[ worker ] = @spawnat worker recieved_task( sc.mission.meta[ task ].fn( sc.mission.meta[ task ].src ) )
                 else
-                    @async worker_state[ future ] = @spawnat worker sc.mission.meta[ task ].fn
+                    @async worker_future[ worker ] = @spawnat worker recieved_task( sc.mission.meta[ task ].fn )
                 end
-                worker_state[ worker ] = WORKER_STATE.launched
+                @async worker_state[ worker ] = WORKER_STATE.launched
             catch
                 #failure to do @spawnat means something funamentally bad happened :/
-                worker_state[ worker ] = WORKER_STATE.failed
+                @async worker_state[ worker ] = WORKER_STATE.failed
             end
         end
     end
