@@ -78,6 +78,12 @@ function attach_node!( graph::MissionGraph, item::MissionNode )
     enforceDAG(graph.g)#ensure we have a DAG
 end
 
+"""
+    addbookmark!( graph::MissionGraph, marker::Symbol )
+
+Adds a bookmark or tag to the last placed node.
+
+"""
 function addbookmark!( graph::MissionGraph, marker::Symbol )
     if haskey(graph.bookmarks, marker)
         @warn("Bookmark $marker already exists - it has been overwritten.")
@@ -85,6 +91,12 @@ function addbookmark!( graph::MissionGraph, marker::Symbol )
     graph.bookmarks[ marker ] = graph.nv
 end
 
+"""
+    attach_node!( graph::MissionGraph, nameitempair::Pair{Symbol, T} ) where {T<:MissionNode}
+
+Adds a new node or bookmarked node with an edge from the last placed node and this one.
+
+"""
 function attach_node!( graph::MissionGraph, nameitempair::Pair{Symbol, T} ) where {T<:MissionNode}
     @assert( graph.nv > 0, "Cannot attach node to an empty graph")
     add_vertex!( graph.g )
@@ -95,6 +107,12 @@ function attach_node!( graph::MissionGraph, nameitempair::Pair{Symbol, T} ) wher
     enforceDAG(graph.g)#ensure we have a DAG
 end
 
+"""
+    connect!( graph::MissionGraph, from_str::Symbol, to_str::Symbol )
+
+Adds an edge between `from_str` to `to_str` in a MissionGraph (`graph`)
+
+"""
 function connect!( graph::MissionGraph, from_str::Symbol, to_str::Symbol )
     sharedmachines = intersect( graph.meta[ graph.bookmarks[ to_str ] ].machines, graph.meta[ graph.bookmarks[from_str] ].machines )
     @assert( length( sharedmachines ) > 0, "Cannot connect bookmarked nodes($from_str & $to_str) which have no shared machines")
