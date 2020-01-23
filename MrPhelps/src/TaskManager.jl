@@ -4,7 +4,7 @@ mutable struct Scheduler
     possible_paths ::Any #ToDo dont be lazy get the type list of 2 int tuples?
     worker_state   ::Dict
     worker_future  ::Dict{ Int, Future }
-    task_stats     ::Dict{ Int, StatsBlock}
+    task_stats     ::Dict{ Int, Any }#ToDo don't be lazy get the online stats type
 end
 
 """
@@ -48,7 +48,7 @@ function execute_mission( sc::Scheduler )
             try
                 if isa( sc.mission.meta[ task ], Stash )
                     #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
-                    @async worker_future[ worker ] = @spawnat worker recieved_task( sc.mission.meta[ task ].fn( sc.mission.meta[ task ].src ) )
+                    @async worker_future[ worker ] = @spawnat worker recieved_task( @thunk sc.mission.meta[ task ].fn( sc.mission.meta[ task ].src ) )
                 else
                     @async worker_future[ worker ] = @spawnat worker recieved_task( sc.mission.meta[ task ].fn )
                 end

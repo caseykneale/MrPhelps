@@ -6,7 +6,7 @@ module MrPhelps
                     "killed, The Secretary will log any knowledge of your actions. This program" *
                     " will hopefully not self-destruct in ten seconds.\n Good luck,")
 
-    using Distributed, ClusterManagers
+    using Distributed, ClusterManagers, OnlineStats
     using LightGraphs, LightGraphsFlows, SparseArrays
     using Glob, Dates
 
