@@ -4,6 +4,7 @@ mutable struct Scheduler
     possible_paths ::Any #ToDo dont be lazy get the type list of 2 int tuples?
     worker_state   ::Dict
     worker_future  ::Dict{ Int, Future }
+    task_stats     ::Dict{ Int, StatsBlock}
 end
 
 """
@@ -36,13 +37,17 @@ actually get's done.
 
 """
 function execute_mission( sc::Scheduler )
+    #everyworker needs their own channel to communicate messages through
+    @sync for (worker, task) in sc.worker_task_map
+        @spawnat worker global channel = Channel()
+    end
+
     @sync for ( worker, task ) in sc.worker_task_map
         if task > 0
             @sync worker_state[ worker ] = WORKER_STATE.ready
             try
                 if isa( sc.mission.meta[ task ], Stash )
-                    #if the current task is a stash, we need to handle iteration over
-                    #collections and their state in the scheduler.
+                    #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
                     @async worker_future[ worker ] = @spawnat worker recieved_task( sc.mission.meta[ task ].fn( sc.mission.meta[ task ].src ) )
                 else
                     @async worker_future[ worker ] = @spawnat worker recieved_task( sc.mission.meta[ task ].fn )
@@ -61,6 +66,7 @@ end
     initial_task_assignments(nm::NodeManager, mission::MissionGraph)
 
 Naively assigns all available workers to all tasks immediately available.
+
 """
 function initial_task_assignments(nm::NodeManager, mission::MissionGraph)
     workersavailable = total_worker_counts( nm )

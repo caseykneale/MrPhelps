@@ -41,10 +41,16 @@ function recieved_task( fn::Union{Thunk, Function} )
     try
         stats = gc_num()
         elapsedtime = time_ns()
-        returnvalue = fn()
+        #if the channel is empty call the base function to add stuff too it
+        if isready( channel )
+            put!(channel, fn() )
+        else
+            #if the channel is full, put the previous result into the next function...
+            put!(channel, take!(channel) |> fn() )
+        end
         elapsedtime = time_ns() - elapsedtime
         diff = GC_Diff( gc_num(), stats )
-        return JobStatistics( elapsedtime * 1e-9, diff.allocd * 1e-6 ), returnvalue
+        return JobStatistics( elapsedtime * 1e-9, diff.allocd * 1e-6 )
     catch #uh oh
         return missing, missing
     end

@@ -45,7 +45,6 @@ function update!(nm::NodeManager)
     return nm
 end
 
-
 """
     availablemachines( computemetadict::Dict )
 

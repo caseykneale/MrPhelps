@@ -11,7 +11,7 @@ module MrPhelps
     using Glob, Dates
 
     include("Thunks.jl")
-    export WORKER_STATE, Thunk, thunk
+    export WORKER_STATE, Thunk, thunk, recieved_task
 
     include("MetaUtils.jl")
     export WorkerMetaData, worker_meta
@@ -29,6 +29,6 @@ module MrPhelps
             terminalnodes, terminatingnodes, parentnodes, execution_paths
 
     include("TaskManager.jl")
-    export Scheduler, initial_task_assignments
+    export Scheduler, execute_mission, initial_task_assignments
 
 end # module

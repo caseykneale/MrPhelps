@@ -59,6 +59,19 @@ nm.machinenodemap
 
 schedule = Scheduler( nm, mission )
 
+#rc = RemoteChannel(2)
+@everywhere delayedthing1( x ) = ( put!(rc, x ^ 2 ); sleep( 30 ); )
+@everywhere delayedthing2(  ) = ( sleep( 5 ); put!( take!(rc) ^ 2 ); sleep( 30 ); )
+@everywhere gimmethethingnow(  ) = take!(rc)
+#execute things remotely
+@spawnat 2 delayedthing1( 6 )
+@spawnat 2 delayedthing2()
+z = @spawnat 2 gimmethethingnow()
+x = fetch( z )
+println( "cookie" )
+
+fetch( @spawnat 2 
+
 #===============================================
 #               Below is all WIP
 #===============================================
