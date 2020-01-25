@@ -53,15 +53,19 @@ function execute_mission( sc::Scheduler )
     @sync for (worker, task) in sc.worker_communications
         @spawnat worker global state_channel = Channel()
     end
+    @info("Global states assigned to workers")
     #ToDo: Add defensive programming to ensure all of these channels exist.
 
     #Kick off the event listener loop... This is a bit ugly but whatever, Observables, and Signals
     #follow this pattern. I'd like a more actor style or true event listener style but this is okay for now!
-    @async spawn_listeners( sc )
+    #@async spawn_listeners( sc )
 
     #lets start the actual work!
-    @sync for ( worker, task ) in sc.worker_communications
-        if task > 0
+    @sync for ( worker, comm ) in sc.worker_communications
+        println(typeof(comm))
+        task = fetch( @spawnat worker take!(comm) )
+        println(typeof(task))
+        if task.last_task > 0
             try
                 @async begin
                     #make a single buffer to get job statistics from a called and finished fn
@@ -85,6 +89,7 @@ function execute_mission( sc::Scheduler )
             end
         end
     end
+    @info("Done distributing initial tasks. Good luck")
 end
 
 function spawn_listeners(sc::Scheduler)
