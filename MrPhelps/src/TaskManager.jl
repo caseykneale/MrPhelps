@@ -107,6 +107,9 @@ function spawn_listeners(sc::Scheduler)
                             fit!( sc.task_stats[ bufferworker.last_task ].elapsed_time, bufferworker.task_stats.elapsedtime )
                             fit!( sc.task_stats[ bufferworker.last_task ].bytes_allocated, bufferworker.task_stats.bytes_allocated )
                             #assign next task
+                            @spawnat worker dispatch_task(  sc.mission.meta[ nexttask ].fn,
+                                                            sc.worker_communications[ worker ],
+                                                            nexttask )
                         end
                     elseif bufferworker.state == failed
                         #ToDo: handle errors
@@ -115,17 +118,6 @@ function spawn_listeners(sc::Scheduler)
             end
         end #end for workers
     end
-end
-
-function continue_plan( sc::Scheduler, worker::Int )
-    # #Get next task
-    # worker_paths = LightGraphs.neighbors( mission.g, sc.worker_task_map[worker] )
-    # if length(worker_paths) == 1
-    #     #Hey let's assign and execute that task
-    #     sc.worker_task_map[worker]  = worker_paths
-    #     sc.worker_future[ worker ]  = @spawnat worker recieved_task( sc.mission.meta[ task ].fn )
-    #     sc.task_stats[ worker ]     = fetch( sc.worker_future[ worker ] )
-    # end
 end
 
 """
