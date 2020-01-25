@@ -1,6 +1,6 @@
-struct JobStatistics
-    elapsed_time::Series{Any}
-    bytes_allocated::Series{Any}
+struct JobStatistics{A}
+    elapsed_time::A
+    bytes_allocated::A
 end
 JobStatistics() = JobStatistics(Series( Mean(), Variance() ), Series( Mean(), Variance() ))
 

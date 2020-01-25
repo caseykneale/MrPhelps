@@ -23,14 +23,14 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     worker_task_map = initial_task_assignments( nm, mission )
     #now lets make channels for these workers to talk to the local thread!
     worker_comm_map = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()
-    task_stats      = Dict{ Int, Series{ Any } }()
+    task_stats      = Dict{ Int, Any }()
     for (worker, metadata) in nm.computemeta
         worker_comm_map[ worker ] = RemoteChannel(  () -> Channel{WorkerCommunication}(1), worker )
         @spawnat worker put!(worker_comm_map[ worker ], WorkerCommunication( JobStatisticsSample(),
                                                                             worker_task_map[ worker ],
                                                                             available) )
 
-        task_stats[ worker ] = Series( Mean(), Variance() )
+        task_stats[ worker ] = JobStatistics()
     end
     #get all the info nice and tidy...
     #worker_state    = Dict( [ worker => available for ( worker, task ) in worker_task_map ] )
@@ -50,7 +50,7 @@ function execute_mission( sc::Scheduler )
     #everyworker needs their own channel to save state of tasks in.
     #This could be factored out to be a RemoteChannel of a Channel{Any} but its the same.
     #The main point here is this is data only on the remote machine.
-    @sync for (worker, task) in sc.worker_task_map
+    @sync for (worker, task) in sc.worker_communications
         @spawnat worker global state_channel = Channel()
     end
     #ToDo: Add defensive programming to ensure all of these channels exist.
@@ -60,20 +60,20 @@ function execute_mission( sc::Scheduler )
     @async spawn_listeners( sc )
 
     #lets start the actual work!
-    @sync for ( worker, task ) in sc.worker_task_map
+    @sync for ( worker, task ) in sc.worker_communications
         if task > 0
             try
                 @async begin
                     #make a single buffer to get job statistics from a called and finished fn
-                    if isa( sc.mission.meta[ task ], Stash )
+                    if isa( sc.mission.meta[ task.last_task ], Stash )
                         #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
-                        @spawnat worker dispatch_task(  @thunk sc.mission.meta[ task ].fn( sc.mission.meta[ task ].src,
+                        @spawnat worker dispatch_task(  @thunk sc.mission.meta[ task.last_task ].fn( sc.mission.meta[ task.last_task ].src,
                                                         sc.worker_communications[ worker ],
-                                                        task ) )
+                                                        task.last_task ) )
                     else
-                        @spawnat worker dispatch_task(  sc.mission.meta[ task ].fn,
+                        @spawnat worker dispatch_task(  sc.mission.meta[ task.last_task ].fn,
                                                         sc.worker_communications[ worker ],
-                                                        task )
+                                                        task.last_task )
                     end
                     #sc.task_stats[ worker ]     = fetch( sc.worker_future[ worker ] )
                     #now we know the task is completed so we gotta assign the next task to this worker

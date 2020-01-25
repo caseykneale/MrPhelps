@@ -1,5 +1,5 @@
 module MrPhelps
-    using Revise
+    #using Revise
 
     greet() = print("Your mission, should you choose to accept it, is to distribute all the tasks..."*
                     "As always, should you or any of your nodes be interrupted or " *

@@ -48,6 +48,8 @@ add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv", 
 connect!(mission, :references, :prod)
 
 sc = Scheduler( nm, mission )
+execute_mission( sc )
+
 
 ##########################################################################
 # Most naive scheme
