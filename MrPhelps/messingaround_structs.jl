@@ -47,6 +47,8 @@ connect!(mission, :prod, :final)
 add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv", [ Local ], 1 ) )
 connect!(mission, :references, :prod)
 
+nm.computemeta[2]
+
 ##########################################################################
 # Most naive scheme
 #   Worker starts process at a source
@@ -60,17 +62,18 @@ nm.machinenodemap
 schedule = Scheduler( nm, mission )
 
 #rc = RemoteChannel(2)
+@everywhere global rc = Channel()
 @everywhere delayedthing1( x ) = ( put!(rc, x ^ 2 ); sleep( 30 ); )
 @everywhere delayedthing2(  ) = ( sleep( 5 ); put!( take!(rc) ^ 2 ); sleep( 30 ); )
-@everywhere gimmethethingnow(  ) = take!(rc)
+@everywhere gimmethethingnow(  ) = :done
 #execute things remotely
-@spawnat 2 delayedthing1( 6 )
-@spawnat 2 delayedthing2()
-z = @spawnat 2 gimmethethingnow()
-x = fetch( z )
+x = @async begin
+    z = @spawnat 2 delayedthing1( 2 )
+    #fetch(z)
+    :done
+end
+fetch(x)
 println( "cookie" )
-
-fetch( @spawnat 2 
 
 #===============================================
 #               Below is all WIP
@@ -79,6 +82,7 @@ fetch( @spawnat 2
 #MissionGraph links Tasks to Tasks, and Tasks to Workers
 #I need to link available machines to available tasks least effort way: make a map
 Pkg.add("LightGraphsFlows")
+
 using Clp: ClpSolver # use your favorite LP solver here
 using LightGraphs, LightGraphsFlows
 using SparseArrays

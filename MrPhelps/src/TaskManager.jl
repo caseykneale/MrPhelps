@@ -1,10 +1,11 @@
 mutable struct Scheduler
     mission        ::MissionGraph
     nm             ::NodeManager
-    possible_paths ::Any #ToDo dont be lazy get the type list of 2 int tuples?
+    possible_paths ::Any #ToDo dont be lazy get the type list of 2 int tuples? Do I even need this?
+    worker_task_map::Dict
     worker_state   ::Dict
     worker_future  ::Dict{ Int, Future }
-    task_stats     ::Dict{ Int, Any }#ToDo don't be lazy get the online stats type
+    task_stats     ::Dict{ Int, JobStatistics }#ToDo don't be lazy get the online stats type
 end
 
 """
@@ -26,7 +27,9 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     #get all the info nice and tidy...
     worker_state    = Dict( [ worker => available for ( worker, task ) in worker_task_map ] )
     worker_future   = Dict{ Int, Future }()
-    return Scheduler( mission, nm, possible_paths, worker_state, worker_future )
+    task_stats      = Dict{ Int, Any }()
+    return Scheduler(   mission, nm, possible_paths,
+                        worker_task_map, worker_state, worker_future, task_stats )
 end
 
 """
@@ -41,25 +44,43 @@ function execute_mission( sc::Scheduler )
     @sync for (worker, task) in sc.worker_task_map
         @spawnat worker global channel = Channel()
     end
-
     @sync for ( worker, task ) in sc.worker_task_map
         if task > 0
-            @sync worker_state[ worker ] = WORKER_STATE.ready
+            @sync sc.worker_state[ worker ] = WORKER_STATE.ready
             try
-                if isa( sc.mission.meta[ task ], Stash )
-                    #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
-                    @async worker_future[ worker ] = @spawnat worker recieved_task( @thunk sc.mission.meta[ task ].fn( sc.mission.meta[ task ].src ) )
-                else
-                    @async worker_future[ worker ] = @spawnat worker recieved_task( sc.mission.meta[ task ].fn )
+                @async begin
+                    #make a single buffer to get job statistics from a called and finished fn
+                    if isa( sc.mission.meta[ task ], Stash )
+                        #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
+                        sc.worker_future[ worker ] = @spawnat worker recieved_task( @thunk sc.mission.meta[ task ].fn( sc.mission.meta[ task ].src ) )
+                    else
+                        sc.worker_future[ worker ] = @spawnat worker recieved_task( sc.mission.meta[ task ].fn )
+                    end
+                    sc.worker_state[ worker ]   = WORKER_STATE.launched
+                    sc.task_stats[ worker ]     = fetch( sc.worker_future[ worker ] )
+                    sc.worker_state[ worker ]   = WORKER_STATE.ready
+                    #now we know the task is completed so we gotta assign the next task to this worker
+                    continue_plan( sc, worker )
                 end
-                @async worker_state[ worker ] = WORKER_STATE.launched
             catch
                 #failure to do @spawnat means something funamentally bad happened :/
-                @async worker_state[ worker ] = WORKER_STATE.failed
+                @async sc.worker_state[ worker ] = WORKER_STATE.failed
             end
         end
     end
+end
 
+function continue_plan( sc::Scheduler, worker::Int )
+    #Get next task
+    worker_paths = LightGraphs.neighbors( mission.g, sc.worker_task_map[worker] )
+    if length(worker_paths) == 1
+        #Hey let's assign and execute that task
+        sc.worker_task_map[worker]  = worker_paths
+        sc.worker_future[ worker ]  = @spawnat worker recieved_task( sc.mission.meta[ task ].fn )
+        sc.worker_state[ worker ]   = WORKER_STATE.launched
+        sc.task_stats[ worker ]     = fetch( sc.worker_future[ worker ] )
+        sc.worker_state[ worker ]   = WORKER_STATE.ready
+    end
 end
 
 """
@@ -74,7 +95,7 @@ function initial_task_assignments(nm::NodeManager, mission::MissionGraph)
 
     sources = parentnodes( mission.g )
     if sum( [ mission.meta[src].min_workers for src in sources ] ) < workersavailable
-        @warn("More parent node workers requested ($source_demand) then workers available($workersavailable)")
+        @warn("More parent node workers requested ($source_demand) then workers available ($workersavailable)")
     end
     #Distribute jobs to workers by priority
     sources_by_priority = [ [ src, mission.meta[src].min_workers, mission.meta[src].priority ] for src in sources]

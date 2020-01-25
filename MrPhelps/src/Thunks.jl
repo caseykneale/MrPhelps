@@ -50,8 +50,9 @@ function recieved_task( fn::Union{Thunk, Function} )
         end
         elapsedtime = time_ns() - elapsedtime
         diff = GC_Diff( gc_num(), stats )
+        #All this function returns is the statistics.
         return JobStatistics( elapsedtime * 1e-9, diff.allocd * 1e-6 )
     catch #uh oh
-        return missing, missing
+        return missing
     end
 end
