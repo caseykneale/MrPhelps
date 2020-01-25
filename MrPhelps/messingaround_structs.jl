@@ -1,6 +1,6 @@
 using Pkg
 Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop/Playground/MrPhelps/"))
-using MrPhelps, Distributed, ClusterManagers, SharedArrays, Dates
+using MrPhelps, Distributed, Dates
 
 localonly = true
 #                        Connect Machines!
@@ -47,7 +47,7 @@ connect!(mission, :prod, :final)
 add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv", [ Local ], 1 ) )
 connect!(mission, :references, :prod)
 
-nm.computemeta[2]
+sc = Scheduler( nm, mission )
 
 ##########################################################################
 # Most naive scheme
@@ -81,12 +81,6 @@ schedule = Scheduler( nm, mission )
 #       :ferries results to remote channel
 #       :
 
-using OnlineStats
-cookie = Dict{Int, Series{Any}}(  )
-cookie[a] = Series( Mean(), Variance() )
-println(typeof(a))
-
-fit!(a, [1,2,3,4] )
 
 #NodeManager maps Machines to Workers
 #MissionGraph links Tasks to Tasks, and Tasks to Workers

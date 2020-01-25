@@ -1,9 +1,3 @@
-mutable struct WorkerCommunication
-    task_stats::MrPhelps.JobStatisticsSample
-    last_task::Int
-    state::WORKER_STATE
-end
-
 mutable struct Scheduler
     mission              ::MissionGraph
     nm                   ::NodeManager
@@ -31,15 +25,17 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     worker_comm_map = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()
     task_stats      = Dict{ Int, Series{ Any } }()
     for (worker, metadata) in nm.computemeta
-        worker_comm_map[ worker ] = RemoteChannel(  () -> Channel{WorkerCommunication}(1),
-                                                    worker_task_map[ worker ],
-                                                    available )
+        worker_comm_map[ worker ] = RemoteChannel(  () -> Channel{WorkerCommunication}(1), worker )
+        @spawnat worker put!(worker_comm_map[ worker ], WorkerCommunication( JobStatisticsSample(),
+                                                                            worker_task_map[ worker ],
+                                                                            available) )
+
         task_stats[ worker ] = Series( Mean(), Variance() )
     end
     #get all the info nice and tidy...
     #worker_state    = Dict( [ worker => available for ( worker, task ) in worker_task_map ] )
     return Scheduler(   mission, nm,
-                        worker_comm_map, ,
+                        worker_comm_map,
                         task_stats )
 end
 

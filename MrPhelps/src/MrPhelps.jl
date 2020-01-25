@@ -11,7 +11,8 @@ module MrPhelps
     using Glob, Dates
 
     include("Thunks.jl")
-    export JobStatistics, JobStatisticsSample, WORKER_STATE, Thunk, thunk, dispatch_task
+    export JobStatistics, JobStatisticsSample, WORKER_STATE, WorkerCommunication,
+                Thunk, thunk, dispatch_task
 
     include("MetaUtils.jl")
     export WorkerMetaData, worker_meta

@@ -18,6 +18,12 @@ JobStatisticsSample() = JobStatisticsSample(Missing, Missing)
     failed      = 4
 end
 
+mutable struct WorkerCommunication
+    task_stats::MrPhelps.JobStatisticsSample
+    last_task::Int
+    state::WORKER_STATE
+end
+
 #All thunk code was copied with only superficial changes from ChainRulesCore.jl: Permalink below.
 #https://github.com/JuliaDiff/ChainRulesCore.jl/blob/47f5354191773d73a5dc372cd049b01556f6145f/src/differentials/thunks.jl#L73
 
@@ -62,9 +68,9 @@ function dispatch_task( fn::Union{Thunk, Function},
         elapsedtime = time_ns() - elapsedtime
         diff = GC_Diff( gc_num(), stats )
         jobstats = JobStatisticsSample( elapsedtime * 1e-9, diff.allocd * 1e-6 )
-        put!( local_hook, WorkerCommunication( jobstats, task_ID, ready )
+        put!( local_hook, WorkerCommunication( jobstats, task_ID, ready ) )
     catch #uh oh
-        put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed )
+        put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed ) )
         #if this fails we've lost a worker?
     end
 end
