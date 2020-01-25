@@ -77,9 +77,7 @@ machinenames( nm::NodeManager ) = return [k for k in keys(nm.machinenodemap)]
 Retrieves the number of workers allocated to a specific machine.
 
 """
-function worker_count(nm::NodeManager, machine::String)
-    return length( nm.machinenodemap[ machine ] )
-end
+worker_count(nm::NodeManager, machine::String) = length( nm.machinenodemap[ machine ] )
 
 """
     total_worker_counts(nm::NodeManager, machines::Vector{String} = machinenames( nm ) )

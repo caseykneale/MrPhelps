@@ -1,8 +1,14 @@
 struct JobStatistics
+    elapsed_time::Series{Any}
+    bytes_allocated::Series{Any}
+end
+JobStatistics() = JobStatistics(Series( Mean(), Variance() ), Series( Mean(), Variance() ))
+
+struct JobStatisticsSample
     elapsed_time::Union{Missing, Float64}
     bytes_allocated::Union{Missing, Float64}
 end
-JobStatistics() = JobStatistics(Missing, Missing)
+JobStatisticsSample() = JobStatisticsSample(Missing, Missing)
 
 @enum WORKER_STATE begin
     available   = 0
@@ -24,6 +30,7 @@ end
     @thunk expression
 
 Define a [`Thunk`](@ref) wrapping the `expression`, to lazily defer its evaluation.
+https://github.com/JuliaDiff/ChainRulesCore.jl/blob/47f5354191773d73a5dc372cd049b01556f6145f/src/differentials/thunks.jl#L73
 """
 macro thunk(expression)
     # Basically `:(Thunk(() -> $(esc(body))))` but use the location where it is defined. so we get useful stack traces if it errors.
@@ -38,22 +45,26 @@ Executes a worker task on a remote machine. Statistics are sent back to the loca
 data is stored locally.
 
 """
-function recieved_task( fn::Union{Thunk, Function} )
+function dispatch_task( fn::Union{Thunk, Function},
+                        local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
+                        task_ID::Int )
     try
         stats = gc_num()
         elapsedtime = time_ns()
         #if the channel is empty call the base function to add stuff too it
-        if isready( channel )
-            put!(channel, fn() )
+        #Note State_channel is a global that gets created in execute_mission() on every worker!!!!
+        if isready( state_channel )
+            put!(state_channel, fn() )
         else
             #if the channel is full, put the previous result into the next function...
-            put!(channel, take!(channel) |> fn() )
+            put!(state_channel, take!(state_channel) |> fn() )
         end
         elapsedtime = time_ns() - elapsedtime
         diff = GC_Diff( gc_num(), stats )
-        #All this function returns is the statistics.
-        return JobStatistics( elapsedtime * 1e-9, diff.allocd * 1e-6 )
+        jobstats = JobStatisticsSample( elapsedtime * 1e-9, diff.allocd * 1e-6 )
+        put!( local_hook, WorkerCommunication( jobstats, task_ID, ready )
     catch #uh oh
-        return missing
+        put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed )
+        #if this fails we've lost a worker?
     end
 end

@@ -1,5 +1,5 @@
 mutable struct WorkerCommunication
-    task_stats::MrPhelps.JobStatistics
+    task_stats::MrPhelps.JobStatisticsSample
     last_task::Int
     state::WORKER_STATE
 end
@@ -7,10 +7,8 @@ end
 mutable struct Scheduler
     mission              ::MissionGraph
     nm                   ::NodeManager
-    #possible_paths       ::Any #ToDo dont be lazy get the type list of 2 int tuples? Do I even need this?
-    worker_communications::Dict{ Int, WorkerCommunication }
-    #worker_state         ::Dict
-    worker_future        ::Dict{ Int, Future }
+    worker_communications::Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }
+    task_stats           ::Dict{ Int, JobStatistics }
 end
 
 """
@@ -31,17 +29,18 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     worker_task_map = initial_task_assignments( nm, mission )
     #now lets make channels for these workers to talk to the local thread!
     worker_comm_map = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()
+    task_stats      = Dict{ Int, Series{ Any } }()
     for (worker, metadata) in nm.computemeta
         worker_comm_map[ worker ] = RemoteChannel(  () -> Channel{WorkerCommunication}(1),
                                                     worker_task_map[ worker ],
                                                     available )
+        task_stats[ worker ] = Series( Mean(), Variance() )
     end
     #get all the info nice and tidy...
     #worker_state    = Dict( [ worker => available for ( worker, task ) in worker_task_map ] )
-    worker_future   = Dict{ Int, Future }()
-    return Scheduler(   mission, nm, #possible_paths,
-                        worker_comm_map, #worker_state,
-                        worker_future )
+    return Scheduler(   mission, nm,
+                        worker_comm_map, ,
+                        task_stats )
 end
 
 """
@@ -52,47 +51,81 @@ actually get's done.
 
 """
 function execute_mission( sc::Scheduler )
-    #everyworker needs their own channel to communicate messages through
+    #everyworker needs their own channel to save state of tasks in.
+    #This could be factored out to be a RemoteChannel of a Channel{Any} but its the same.
+    #The main point here is this is data only on the remote machine.
     @sync for (worker, task) in sc.worker_task_map
-        @spawnat worker global channel = Channel()
+        @spawnat worker global state_channel = Channel()
     end
+    #ToDo: Add defensive programming to ensure all of these channels exist.
+
+    #Kick off the event listener loop... This is a bit ugly but whatever, Observables, and Signals
+    #follow this pattern. I'd like a more actor style or true event listener style but this is okay for now!
+    @async spawn_listeners( sc )
+
+    #lets start the actual work!
     @sync for ( worker, task ) in sc.worker_task_map
         if task > 0
-            @sync sc.worker_state[ worker ] = WORKER_STATE.ready
             try
                 @async begin
                     #make a single buffer to get job statistics from a called and finished fn
                     if isa( sc.mission.meta[ task ], Stash )
                         #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
-                        sc.worker_future[ worker ] = @spawnat worker recieved_task( @thunk sc.mission.meta[ task ].fn( sc.mission.meta[ task ].src ) )
+                        @spawnat worker dispatch_task(  @thunk sc.mission.meta[ task ].fn( sc.mission.meta[ task ].src,
+                                                        sc.worker_communications[ worker ],
+                                                        task ) )
                     else
-                        sc.worker_future[ worker ] = @spawnat worker recieved_task( sc.mission.meta[ task ].fn )
+                        @spawnat worker dispatch_task(  sc.mission.meta[ task ].fn,
+                                                        sc.worker_communications[ worker ],
+                                                        task )
                     end
-                    sc.worker_state[ worker ]   = WORKER_STATE.launched
-                    sc.task_stats[ worker ]     = fetch( sc.worker_future[ worker ] )
-                    sc.worker_state[ worker ]   = WORKER_STATE.ready
+                    #sc.task_stats[ worker ]     = fetch( sc.worker_future[ worker ] )
                     #now we know the task is completed so we gotta assign the next task to this worker
-                    continue_plan( sc, worker )
+                    #continue_plan( sc, worker )
                 end
             catch
                 #failure to do @spawnat means something funamentally bad happened :/
-                @async sc.worker_state[ worker ] = WORKER_STATE.failed
+                #@async sc.worker_state[ worker ] = WORKER_STATE.failed
             end
         end
     end
 end
 
-function continue_plan( sc::Scheduler, worker::Int )
-    #Get next task
-    worker_paths = LightGraphs.neighbors( mission.g, sc.worker_task_map[worker] )
-    if length(worker_paths) == 1
-        #Hey let's assign and execute that task
-        sc.worker_task_map[worker]  = worker_paths
-        sc.worker_future[ worker ]  = @spawnat worker recieved_task( sc.mission.meta[ task ].fn )
-        sc.worker_state[ worker ]   = WORKER_STATE.launched
-        sc.task_stats[ worker ]     = fetch( sc.worker_future[ worker ] )
-        sc.worker_state[ worker ]   = WORKER_STATE.ready
+function spawn_listeners(sc::Scheduler)
+    while true
+        #look for tasks that have completed!
+        for ( worker, task ) in sc.worker_task_map
+            if task > 0 #check for if a worker was assigned a task
+                if isready( sc.worker_communications[ worker ] )
+                    bufferworker = fetch( @spawnat worker take!( sc.worker_communications[ worker ] ) )
+                    if bufferworker.state == ready
+                        #this task is done.a
+                        nexttask = neighbors(sc.g, bufferworker.last_task)
+                        if length(nexttask) == 0
+                            #we're at the end of our DAG!
+                        else
+                            fit!( sc.task_stats[ bufferworker.last_task ].elapsed_time, bufferworker.task_stats.elapsedtime )
+                            fit!( sc.task_stats[ bufferworker.last_task ].bytes_allocated, bufferworker.task_stats.bytes_allocated )
+                            #assign next task
+                        end
+                    elseif bufferworker.state == failed
+                        #ToDo: handle errors
+                    end
+                end
+            end
+        end #end for workers
     end
+end
+
+function continue_plan( sc::Scheduler, worker::Int )
+    # #Get next task
+    # worker_paths = LightGraphs.neighbors( mission.g, sc.worker_task_map[worker] )
+    # if length(worker_paths) == 1
+    #     #Hey let's assign and execute that task
+    #     sc.worker_task_map[worker]  = worker_paths
+    #     sc.worker_future[ worker ]  = @spawnat worker recieved_task( sc.mission.meta[ task ].fn )
+    #     sc.task_stats[ worker ]     = fetch( sc.worker_future[ worker ] )
+    # end
 end
 
 """
@@ -107,7 +140,7 @@ function initial_task_assignments(nm::NodeManager, mission::MissionGraph) #:< Di
 
     sources = parentnodes( mission.g )
     if sum( [ mission.meta[src].min_workers for src in sources ] ) < workersavailable
-        @warn("More parent node workers requested ($source_demand) then workers available ($workersavailable)")
+        @warn("More parent node workers requested ($source_demand) then workers available ($workersavailable).")
     end
     #Distribute jobs to workers by priority
     sources_by_priority = [ [ src, mission.meta[src].min_workers, mission.meta[src].priority ] for src in sources]

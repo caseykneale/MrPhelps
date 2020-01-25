@@ -16,9 +16,9 @@ fauxfilenames = Expand( fullpath, Dict( "experiment" => [ "A", "B", "C" ],
 for filename in fauxfilenames
     column_names = [ :name, :rand, :randn ]
 
-    column_values = [ [ randstring(rand(1:10)[1] + 4)  for entry in 1:entries ],
-                      [ rand(1)[1]              for entry in 1:entries ],
-                      [ randn(1)[1]             for entry in 1:entries ] ]
+    column_values = [ [ randstring(rand(1:10)[1] + 4)   for entry in 1:entries ],
+                      [ rand(1)[1]                      for entry in 1:entries ],
+                      [ randn(1)[1]                     for entry in 1:entries ] ]
     df = DataFrame( column_values, column_names )
     CSV.write(filename, df)
 end

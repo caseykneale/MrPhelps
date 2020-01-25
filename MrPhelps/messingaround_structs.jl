@@ -81,44 +81,12 @@ schedule = Scheduler( nm, mission )
 #       :ferries results to remote channel
 #       :
 
-@everywhere begin
-    struct WorkerCommunication
-        task_stats::MrPhelps.JobStatistics
-        last_task::Int
-    end
-end
+using OnlineStats
+cookie = Dict{Int, Series{Any}}(  )
+cookie[a] = Series( Mean(), Variance() )
+println(typeof(a))
 
-a = Dict{Int, String}()
-
-nm.computemeta
-worker_channel_dict = Dict()
-for (worker, metadata) in nm.computemeta
-    worker_channel_dict[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker)
-end
-
-println( typeof(RemoteChannel( () -> Channel{WorkerCommunication}(1), 1)) )
-
-typeof(worker_channel_dict)
-
-worker_channel_dict
-wc2 = WorkerCommunication( MrPhelps.JobStatistics( 10.0, 10.0 ), 2 )
-sentout = @spawnat 2 put!( worker_channel_dict[ 2 ] , wc2 )
-getback = fetch( @spawnat 2 take!( worker_channel_dict[ 2 ] ) )
-
-
-#rc = RemoteChannel(2)
-@everywhere global rc = Channel()
-@everywhere delayedthing1( x ) = ( put!(rc, x ^ 2 ); sleep( 30 ); )
-@everywhere delayedthing2(  ) = ( sleep( 5 ); put!( take!(rc) ^ 2 ); sleep( 30 ); )
-@everywhere gimmethethingnow(  ) = :done
-#execute things remotely
-x = @async begin
-    z = @spawnat 2 delayedthing1( 2 )
-    #fetch(z)
-    :done
-end
-fetch(x)
-println( "cookie" )
+fit!(a, [1,2,3,4] )
 
 #NodeManager maps Machines to Workers
 #MissionGraph links Tasks to Tasks, and Tasks to Workers
