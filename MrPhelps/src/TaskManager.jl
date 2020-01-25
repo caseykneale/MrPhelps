@@ -1,11 +1,16 @@
+mutable struct WorkerCommunication
+    task_stats::MrPhelps.JobStatistics
+    last_task::Int
+    state::WORKER_STATE
+end
+
 mutable struct Scheduler
-    mission        ::MissionGraph
-    nm             ::NodeManager
-    possible_paths ::Any #ToDo dont be lazy get the type list of 2 int tuples? Do I even need this?
-    worker_task_map::Dict
-    worker_state   ::Dict
-    worker_future  ::Dict{ Int, Future }
-    task_stats     ::Dict{ Int, JobStatistics }#ToDo don't be lazy get the online stats type
+    mission              ::MissionGraph
+    nm                   ::NodeManager
+    #possible_paths       ::Any #ToDo dont be lazy get the type list of 2 int tuples? Do I even need this?
+    worker_communications::Dict{ Int, WorkerCommunication }
+    #worker_state         ::Dict
+    worker_future        ::Dict{ Int, Future }
 end
 
 """
@@ -21,15 +26,22 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     # Find each flow from each parent to it's respective terminal
     sinks = terminalnodes( mission.g )
     #find how each parent propagates to a terminal node
-    possible_paths = execution_paths( mission )
-    #map out initial tasks naively
+    #possible_paths = execution_paths( mission )
+    #map out initial worker to task relationships - naively
     worker_task_map = initial_task_assignments( nm, mission )
+    #now lets make channels for these workers to talk to the local thread!
+    worker_comm_map = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()
+    for (worker, metadata) in nm.computemeta
+        worker_comm_map[ worker ] = RemoteChannel(  () -> Channel{WorkerCommunication}(1),
+                                                    worker_task_map[ worker ],
+                                                    available )
+    end
     #get all the info nice and tidy...
-    worker_state    = Dict( [ worker => available for ( worker, task ) in worker_task_map ] )
+    #worker_state    = Dict( [ worker => available for ( worker, task ) in worker_task_map ] )
     worker_future   = Dict{ Int, Future }()
-    task_stats      = Dict{ Int, Any }()
-    return Scheduler(   mission, nm, possible_paths,
-                        worker_task_map, worker_state, worker_future, task_stats )
+    return Scheduler(   mission, nm, #possible_paths,
+                        worker_comm_map, #worker_state,
+                        worker_future )
 end
 
 """
@@ -89,7 +101,7 @@ end
 Naively assigns all available workers to all tasks immediately available.
 
 """
-function initial_task_assignments(nm::NodeManager, mission::MissionGraph)
+function initial_task_assignments(nm::NodeManager, mission::MissionGraph) #:< Dict{Int,Int}
     workersavailable = total_worker_counts( nm )
     worker_queue = Dict( [ worker => 0  for (worker,tmp) in nm.computemeta  ] )
 

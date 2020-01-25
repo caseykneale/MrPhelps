@@ -60,6 +60,51 @@ nm.computemeta[2]
 nm.machinenodemap
 
 schedule = Scheduler( nm, mission )
+# ===============================================
+#               Below is all WIP
+# ===============================================
+# Graph     <->     Tasks       <->     Machine
+# Node      <->     Machine
+# Assign:
+#   - Find parent task
+#   - Find nodes to meet requirements
+# Execute:
+#   - (async) Dispatch task thunks to nodes and run
+#   - (async) Result is stored to a channel & statistics sent back to local
+#   - Local decides the next task for the jobs available
+# More fleshed out...
+#   - Every worker gets a communication remotechannel!
+#   - Dispatch thunks
+#   - Thunks wrapped in a function which
+#       :wraps thunks and deploys args
+#       :computes runtime stats
+#       :ferries results to remote channel
+#       :
+
+@everywhere begin
+    struct WorkerCommunication
+        task_stats::MrPhelps.JobStatistics
+        last_task::Int
+    end
+end
+
+a = Dict{Int, String}()
+
+nm.computemeta
+worker_channel_dict = Dict()
+for (worker, metadata) in nm.computemeta
+    worker_channel_dict[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker)
+end
+
+println( typeof(RemoteChannel( () -> Channel{WorkerCommunication}(1), 1)) )
+
+typeof(worker_channel_dict)
+
+worker_channel_dict
+wc2 = WorkerCommunication( MrPhelps.JobStatistics( 10.0, 10.0 ), 2 )
+sentout = @spawnat 2 put!( worker_channel_dict[ 2 ] , wc2 )
+getback = fetch( @spawnat 2 take!( worker_channel_dict[ 2 ] ) )
+
 
 #rc = RemoteChannel(2)
 @everywhere global rc = Channel()
@@ -75,9 +120,6 @@ end
 fetch(x)
 println( "cookie" )
 
-#===============================================
-#               Below is all WIP
-#===============================================
 #NodeManager maps Machines to Workers
 #MissionGraph links Tasks to Tasks, and Tasks to Workers
 #I need to link available machines to available tasks least effort way: make a map

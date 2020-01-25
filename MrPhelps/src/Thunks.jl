@@ -1,7 +1,8 @@
 struct JobStatistics
-    elapsed_time::Float64
-    bytes_allocated::Float64
+    elapsed_time::Union{Missing, Float64}
+    bytes_allocated::Union{Missing, Float64}
 end
+JobStatistics() = JobStatistics(Missing, Missing)
 
 @enum WORKER_STATE begin
     available   = 0
