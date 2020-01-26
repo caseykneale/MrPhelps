@@ -1,19 +1,19 @@
 abstract type MissionNode ; end
 
 Base.@kwdef mutable struct Agent <: MissionNode
-    fn::Union{ Thunk{Any}, Function }
+    fn::Union{ Thunk, Function }
     machines::Vector{String}
     priority::Int
     min_workers::Int
     max_workers::Int
     dispatched_workers::Vector{Int}
 end
-Agent( fn::Function, machines::Vector{String} ) = Agent( fn, machines, 1, 1, 1, [] )
-Agent( fn::Function, machines::Vector{String}, maxworkers::Int ) = Agent( fn, machines, 1, 1, maxworkers, [] )
+Agent( fn::Union{Thunk,Function}, machines::Vector{String} ) = Agent( fn, machines, 1, 1, 1, [] )
+Agent( fn::Union{Thunk,Function}, machines::Vector{String}, maxworkers::Int ) = Agent( fn, machines, 1, 1, maxworkers, [] )
 
 Base.@kwdef mutable struct Stash <: MissionNode
     src::Union{String,FileIterator,Vector{String}}
-    fn::Union{Nothing, Thunk{Any}, Function}
+    fn::Union{Nothing, Thunk, Function}
     iteratorstate::Any
     machines::Vector{String}
     priority::Int
@@ -24,8 +24,8 @@ end
 
 Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String} ) = Stash( src, nothing, nothing, machines, 1, 1, 1, [] )
 Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String}, maxworkers::Int ) = Stash( src, nothing, nothing, machines, 1, 1, maxworkers,[] )
-Stash( src::Union{String,FileIterator,Vector{String}}, fn::Function, machines::Vector{String} ) = Stash( src, fn, nothing, machines, 1, 1, 1, [] )
-Stash( src::Union{String,FileIterator,Vector{String}}, fn::Function, machines::Vector{String}, maxworkers::Int ) = Stash( src, fn, nothing, machines, 1, 1, maxworkers,[] )
+Stash( src::Union{String,FileIterator,Vector{String}}, fn::Union{Thunk,Function}, machines::Vector{String} ) = Stash( src, fn, nothing, machines, 1, 1, 1, [] )
+Stash( src::Union{String,FileIterator,Vector{String}}, fn::Union{Thunk,Function}, machines::Vector{String}, maxworkers::Int ) = Stash( src, fn, nothing, machines, 1, 1, maxworkers,[] )
 
 Base.@kwdef mutable struct MissionGraph
     g::SimpleDiGraph    = SimpleDiGraph()

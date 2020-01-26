@@ -1,6 +1,7 @@
 using Pkg
 Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop/Playground/MrPhelps/"))
 using MrPhelps, Distributed, Dates
+#"c" |> @thunk( println )()
 
 localonly = true
 #                        Connect Machines!
@@ -34,22 +35,37 @@ println( nm.machinenodemap )
 #                        Define Some Tasks
 mission = MissionGraph()
 #Add an unconnected node to the graph
-add_node!(mission, Stash("/home/caseykneale/Desktop/megacsv.csv", string, [ Local ], 1 ) )
+add_node!(mission, Stash( "/home/caseykneale/Desktop/megacsv.csv",
+                            @thunk( string ), [ Local ], 1 ) )
 #Add a new node to the graph but connect it to the last node laid down
-attach_node!(mission, Agent( prod, [ Local ] ) )
+attach_node!(mission, Agent( @thunk( prod ), [ Local ] ) )
 #Add another new node, but give it a bookmark so we can find it later!
-attach_node!(mission, :prod => Agent( prod, [ Local ] ) )
+attach_node!(mission, :prod => Agent( @thunk( prod ), [ Local ] ) )
 #Look we can add another new node to the graph unattached to anything
-add_node!(mission, :final => Agent( println, [Local] ) )
+add_node!(mission, :final => Agent( @thunk( println ), [Local] ) )
 #And now we can connect it to something else we bookmarked!
 connect!(mission, :prod, :final)
 #We made a very simple linear chain. Yay!
-add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv", string, [ Local ], 1 ) )
-connect!( mission, :references, :prod)
+add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv",
+                                    @thunk( string ), [ Local ], 1 ) )
+connect!( mission, :references, :prod )
+
+# @everywhere ast(x) = x * " all"
+# @everywhere thunked = @thunk ast
+# @everywhere thunked()
+# @spawnat 2 global abc = Channel()
+# @spawnat 2 put!(abc, "bleep it")
+# @everywhere begin
+#     function fnln(thunk)
+#         thunk.f()(take!(abc))
+#     end
+# end
+# abcd = fetch( @spawnat 2 fnln(thunked) )
+# abc
 
 sc = Scheduler( nm, mission )
 execute_mission( sc )
-
+@async spawn_listeners( sc )
 
 ##########################################################################
 # Most naive scheme
@@ -82,9 +98,6 @@ schedule = Scheduler( nm, mission )
 #       :computes runtime stats
 #       :ferries results to remote channel
 #       :
-
-
-
 
 
 #NodeManager maps Machines to Workers

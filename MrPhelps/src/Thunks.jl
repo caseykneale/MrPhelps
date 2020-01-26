@@ -53,28 +53,35 @@ data is stored locally.
 """
 function dispatch_task( fn::Union{Thunk, Function},
                         local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
-                        task_ID::Int, src = nothing )
-    try
-        stats = gc_num()
-        elapsedtime = time_ns()
+                        task_ID::Int,
+                        src = nothing )
+    #try
+        stats = Base.gc_num()
+        elapsedtime = Base.time_ns()
         #if the channel is empty call the base function to add stuff too it
         #Note State_channel is a global that gets created in execute_mission() on every worker!!!!
-        if !isnothing(fn)
-            if isready( state_channel )
-                put!(state_channel, fn() )
+        if !isnothing( fn )
+            global state_channel
+            if !isready( state_channel )#channel is empty!
+                println("???")
+                put!( state_channel, isnothing( src ) ? fn()() : fn()(src) )
             else
+                println("???2")
                 #if the channel is full, put the previous result into the next function...
-                put!(state_channel, take!(state_channel) |> fn() )
+                put!( state_channel, fn()(take!( state_channel )) )
             end
         else
+            println("???3")
             put!(state_channel, src )#is actually a string or metadata?
         end
-        elapsedtime = time_ns() - elapsedtime
-        diff = GC_Diff( gc_num(), stats )
+        elapsedtime = Base.time_ns() - elapsedtime
+        diff = Base.GC_Diff( Base.gc_num(), stats )
+        println("...")
         jobstats = JobStatisticsSample( elapsedtime * 1e-9, diff.allocd * 1e-6 )
+        println("!!!")
         put!( local_hook, WorkerCommunication( jobstats, task_ID, ready ) )
-    catch #uh oh
-        put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed ) )
+    #catch #uh oh
+    #    put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed ) )
         #if this fails we've lost a worker?
-    end
+    #end
 end
