@@ -45,7 +45,7 @@ add_node!(mission, :final => Agent( println, [Local] ) )
 connect!(mission, :prod, :final)
 #We made a very simple linear chain. Yay!
 add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv", string, [ Local ], 1 ) )
-connect!(mission, :references, :prod)
+connect!( mission, :references, :prod)
 
 sc = Scheduler( nm, mission )
 execute_mission( sc )
@@ -82,6 +82,9 @@ schedule = Scheduler( nm, mission )
 #       :computes runtime stats
 #       :ferries results to remote channel
 #       :
+
+
+
 
 
 #NodeManager maps Machines to Workers

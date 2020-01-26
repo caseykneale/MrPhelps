@@ -24,19 +24,16 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     #now lets make channels for these workers to talk to the local thread!
     worker_comm_map = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()
     task_stats      = Dict{ Int, Any }()
-    for (worker, metadata) in nm.computemeta
-        worker_comm_map[ worker ] = RemoteChannel(  () -> Channel{WorkerCommunication}(1), worker )
-        @spawnat worker put!(worker_comm_map[ worker ], WorkerCommunication( JobStatisticsSample(),
-                                                                            worker_task_map[ worker ],
-                                                                            available) )
-
+    @sync for (worker, metadata) in nm.computemeta
+        worker_comm_map[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker )
+        @spawnat worker put!( worker_comm_map[ worker ], WorkerCommunication(   JobStatisticsSample(),
+                                                                                worker_task_map[ worker ],
+                                                                                available ) )
         task_stats[ worker ] = JobStatistics()
     end
     #get all the info nice and tidy...
     #worker_state    = Dict( [ worker => available for ( worker, task ) in worker_task_map ] )
-    return Scheduler(   mission, nm,
-                        worker_comm_map,
-                        task_stats )
+    return Scheduler( mission, nm, worker_comm_map, task_stats )
 end
 
 """
@@ -54,7 +51,7 @@ function execute_mission( sc::Scheduler )
         @spawnat worker global state_channel = Channel()
     end
     @info("Global states assigned to workers")
-    #ToDo: Add defensive programming to ensure all of these channels exist.
+    #ToDo: Add defensive programming to ensure that all of these channels exist.
 
     #Kick off the event listener loop... This is a bit ugly but whatever, Observables, and Signals
     #follow this pattern. I'd like a more actor style or true event listener style but this is okay for now!
@@ -62,12 +59,11 @@ function execute_mission( sc::Scheduler )
 
     #lets start the actual work!
     @sync for ( worker, comm ) in sc.worker_communications
-        println(typeof(comm))
-        task = fetch( @spawnat worker take!(comm) )
-        println(typeof(task))
+        task = take!( sc.worker_communications[ worker ] )
         if task.last_task > 0
             try
                 @async begin
+                    println(myid())
                     #make a single buffer to get job statistics from a called and finished fn
                     if isa( sc.mission.meta[ task.last_task ], Stash )
                         #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
@@ -79,6 +75,7 @@ function execute_mission( sc::Scheduler )
                                                         sc.worker_communications[ worker ],
                                                         task.last_task )
                     end
+                    println(myid())
                     #sc.task_stats[ worker ]     = fetch( sc.worker_future[ worker ] )
                     #now we know the task is completed so we gotta assign the next task to this worker
                     #continue_plan( sc, worker )

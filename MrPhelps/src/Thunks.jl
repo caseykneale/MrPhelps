@@ -8,7 +8,7 @@ struct JobStatisticsSample
     elapsed_time::Union{Missing, Float64}
     bytes_allocated::Union{Missing, Float64}
 end
-JobStatisticsSample() = JobStatisticsSample(Missing, Missing)
+JobStatisticsSample() = JobStatisticsSample(missing, missing)
 
 @enum WORKER_STATE begin
     available   = 0
