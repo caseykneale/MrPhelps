@@ -128,7 +128,6 @@ end
 worker_count( nm, Local )
 total_worker_counts( nm )
 
-
 total_worker_counts = sum( [ length( workers ) for ( name, workers ) in nm.machinenodemap ] )
 nm.machinenodemap
 

@@ -53,17 +53,21 @@ data is stored locally.
 """
 function dispatch_task( fn::Union{Thunk, Function},
                         local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
-                        task_ID::Int )
+                        task_ID::Int, src = nothing )
     try
         stats = gc_num()
         elapsedtime = time_ns()
         #if the channel is empty call the base function to add stuff too it
         #Note State_channel is a global that gets created in execute_mission() on every worker!!!!
-        if isready( state_channel )
-            put!(state_channel, fn() )
+        if !isnothing(fn)
+            if isready( state_channel )
+                put!(state_channel, fn() )
+            else
+                #if the channel is full, put the previous result into the next function...
+                put!(state_channel, take!(state_channel) |> fn() )
+            end
         else
-            #if the channel is full, put the previous result into the next function...
-            put!(state_channel, take!(state_channel) |> fn() )
+            put!(state_channel, src )#is actually a string or metadata?
         end
         elapsedtime = time_ns() - elapsedtime
         diff = GC_Diff( gc_num(), stats )

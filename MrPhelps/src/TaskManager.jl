@@ -63,19 +63,17 @@ function execute_mission( sc::Scheduler )
         if task.last_task > 0
             try
                 @async begin
-                    println(myid())
                     #make a single buffer to get job statistics from a called and finished fn
                     if isa( sc.mission.meta[ task.last_task ], Stash )
                         #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
-                        @spawnat worker dispatch_task(  @thunk sc.mission.meta[ task.last_task ].fn( sc.mission.meta[ task.last_task ].src,
+                        @spawnat worker dispatch_task(  @thunk( sc.mission.meta[ task.last_task ].fn( sc.mission.meta[ task.last_task ].src ) ),
                                                         sc.worker_communications[ worker ],
-                                                        task.last_task ) )
+                                                        task.last_task )
                     else
-                        @spawnat worker dispatch_task(  sc.mission.meta[ task.last_task ].fn,
+                        @spawnat worker dispatch_task(  @thunk( sc.mission.meta[ task.last_task ].fn ),
                                                         sc.worker_communications[ worker ],
                                                         task.last_task )
                     end
-                    println(myid())
                     #sc.task_stats[ worker ]     = fetch( sc.worker_future[ worker ] )
                     #now we know the task is completed so we gotta assign the next task to this worker
                     #continue_plan( sc, worker )
@@ -102,12 +100,12 @@ function spawn_listeners(sc::Scheduler)
                         if length(nexttask) == 0
                             #we're at the end of our DAG!
                         else
-                            fit!( sc.task_stats[ bufferworker.last_task ].elapsed_time, bufferworker.task_stats.elapsedtime )
-                            fit!( sc.task_stats[ bufferworker.last_task ].bytes_allocated, bufferworker.task_stats.bytes_allocated )
+                            #fit!( sc.task_stats[ bufferworker.last_task ].elapsed_time, bufferworker.task_stats.elapsedtime )
+                            #fit!( sc.task_stats[ bufferworker.last_task ].bytes_allocated, bufferworker.task_stats.bytes_allocated )
                             #assign next task
-                            @spawnat worker dispatch_task(  sc.mission.meta[ nexttask ].fn,
-                                                            sc.worker_communications[ worker ],
-                                                            nexttask )
+                            #@spawnat worker dispatch_task(  sc.mission.meta[ nexttask ].fn,
+                            #                                    sc.worker_communications[ worker ],
+                            #                                nexttask )
                         end
                     elseif bufferworker.state == failed
                         #ToDo: handle errors
