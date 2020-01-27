@@ -3,6 +3,7 @@ mutable struct Scheduler
     nm                   ::NodeManager
     worker_communications::Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }
     task_stats           ::Dict{ Int, JobStatistics }
+    worker_channels      ::Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }
 end
 
 """
@@ -23,17 +24,20 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     worker_task_map = initial_task_assignments( nm, mission )
     #now lets make channels for these workers to talk to the local thread!
     worker_comm_map = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()
+    worker_channels = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()    #everyworker needs their own channel to save state of tasks in.
     task_stats      = Dict{ Int, Any }()
     @sync for (worker, metadata) in nm.computemeta
-        worker_comm_map[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker )
-        @spawnat worker put!( worker_comm_map[ worker ], WorkerCommunication(   JobStatisticsSample(),
-                                                                                worker_task_map[ worker ],
-                                                                                available ) )
-        task_stats[ worker ] = JobStatistics()
+        #worker_comm_map[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker )
+        #worker_channels[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker )
+        #@spawnat worker put!( worker_comm_map[ worker ], WorkerCommunication(   JobStatisticsSample(),
+        #                                                                        worker_task_map[ worker ],
+        #                                                                        available ) )
+        #task_stats[ worker ] = JobStatistics()
     end
+    @info("Global states assigned to workers")
     #get all the info nice and tidy...
     #worker_state    = Dict( [ worker => available for ( worker, task ) in worker_task_map ] )
-    return Scheduler( mission, nm, worker_comm_map, task_stats )
+    return Scheduler( mission, nm, worker_comm_map, task_stats, worker_channels )
 end
 
 """
@@ -44,13 +48,6 @@ actually get's done.
 
 """
 function execute_mission( sc::Scheduler )
-    #everyworker needs their own channel to save state of tasks in.
-    #This could be factored out to be a RemoteChannel of a Channel{Any} but its the same.
-    #The main point here is this is data only on the remote machine.
-    @sync for (worker, task) in sc.worker_communications
-        @spawnat worker global state_channel = Channel()
-    end
-    @info("Global states assigned to workers")
     #ToDo: Add defensive programming to ensure that all of these channels exist.
     @sync for ( worker, comm ) in sc.worker_communications
         task = take!( sc.worker_communications[ worker ] )
@@ -60,14 +57,22 @@ function execute_mission( sc::Scheduler )
                     #make a single buffer to get job statistics from a called and finished fn
                     if isa( sc.mission.meta[ task.last_task ], Stash )
                         #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
-                        @spawnat worker dispatch_task(  sc.mission.meta[ task.last_task ].fn,
-                                                        sc.worker_communications[ worker ],
-                                                        task.last_task,
-                                                        sc.mission.meta[ task.last_task ].src )
+                        @spawnat worker begin
+                            sc.mission.meta[ task.last_task ].fn
+                            dispatch_task(  sc.mission.meta[ task.last_task ].fn,
+                                            sc.worker_channels[ worker ],
+                                            sc.worker_communications[ worker ],
+                                            task.last_task,
+                                            sc.mission.meta[ task.last_task ].src )
+                        end
                     else
-                        @spawnat worker dispatch_task(  sc.mission.meta[ task.last_task ].fn,
-                                                        sc.worker_communications[ worker ],
-                                                        task.last_task )
+                        @spawnat worker begin
+                            sc.mission.meta[ task.last_task ].fn
+                            dispatch_task(  sc.mission.meta[ task.last_task ].fn,
+                                            sc.worker_channels[ worker ],
+                                            sc.worker_communications[ worker ],
+                                            task.last_task )
+                        end
                     end
                 end
             catch
