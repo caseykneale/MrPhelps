@@ -2,7 +2,7 @@ struct JobStatistics{A}
     elapsed_time::A
     bytes_allocated::A
 end
-JobStatistics() = JobStatistics(Series( Mean(), Variance() ), Series( Mean(), Variance() ))
+JobStatistics() = JobStatistics( Series( Mean(), Variance() ), Series( Mean(), Variance() ))
 
 struct JobStatisticsSample
     elapsed_time::Union{Missing, Float64}
@@ -56,6 +56,8 @@ function dispatch_task( fn::Union{Thunk, Function},
                         local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
                         task_ID::Int,
                         src = nothing )
+
+    println(fn)
     try
         stats = Base.gc_num()
         elapsedtime = Base.time_ns()

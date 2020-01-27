@@ -67,6 +67,8 @@ sc = Scheduler( nm, mission )
 execute_mission( sc )
 @async spawn_listeners( sc )
 
+sc.task_stats
+
 ##########################################################################
 # Most naive scheme
 #   Worker starts process at a source

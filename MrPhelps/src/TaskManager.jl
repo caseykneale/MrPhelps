@@ -32,7 +32,7 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
         @spawnat worker put!( worker_comm_map[ worker ], WorkerCommunication(   JobStatisticsSample(),
                                                                                 worker_task_map[ worker ],
                                                                                 available ) )
-        task_stats[ worker ] = JobStatistics()
+        task_stats[ worker_task_map[ worker ] ] = JobStatistics()
     end
     @info("Global states assigned to workers")
     #get all the info nice and tidy...
@@ -92,30 +92,34 @@ function spawn_listeners(sc::Scheduler)
     while true
         #look for tasks that have completed!
         for ( worker, task ) in sc.worker_communications
-            if isready( sc.worker_communications[ worker ] )
-                bufferworker = fetch( @spawnat worker take!( sc.worker_communications[ worker ] ) )
-                if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
-                    #this task is done
-                    nexttask = neighbors(sc.mission.g, bufferworker.last_task)
-                    if length(nexttask) == 0
-                        #we're at the end of our DAG!
-                    else
-                        println(bufferworker)
-                        OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].elapsed_time,
-                                                    bufferworker.task_stats.elapsed_time )
-                        println("...")
-                        OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
-                                                bufferworker.task_stats.bytes_allocated )
-                        #assign next task
-                        @spawnat worker dispatch_task(  sc.mission.meta[ nexttask ].fn,
-                                                        sc.worker_channels[ worker ],
-                                                        sc.worker_communications[ worker ],
-                                                        nexttask )
-                        println( "ding!" )
+            try
+                if isready( sc.worker_communications[ worker ] )
+                    bufferworker = fetch( @spawnat worker take!( sc.worker_communications[ worker ] ) )
+                    if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
+                        #this task is done
+                        nexttask = neighbors(sc.mission.g, bufferworker.last_task)
+                        if length(nexttask) == 0
+                            #we're at the end of a DAG!
+                        else
+                            OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].elapsed_time,
+                                                        bufferworker.task_stats.elapsed_time )
+                            OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
+                                                    bufferworker.task_stats.bytes_allocated )
+                            #assign next task
+                            @spawnat worker begin
+                                sc.mission.meta[ nexttask ].fn
+                                println("alll gooood")
+                                dispatch_task(  sc.mission.meta[ nexttask ].fn,
+                                                sc.worker_channels[ worker ],
+                                                sc.worker_communications[ worker ],
+                                                nexttask )
+                            end
+                        end
+                    elseif bufferworker.state == failed
+                        #ToDo: handle errors
                     end
-                elseif bufferworker.state == failed
-                    #ToDo: handle errors
                 end
+            catch
             end
         end #end for workers
     end
