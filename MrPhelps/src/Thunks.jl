@@ -52,36 +52,31 @@ data is stored locally.
 
 """
 function dispatch_task( fn::Union{Thunk, Function},
-                        remote_hook::RemoteChannel{ Channel{ WorkerCommunication } },
+                        remote_hook::RemoteChannel{ Channel{ Any } },
                         local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
                         task_ID::Int,
                         src = nothing )
-    #try
+    try
         stats = Base.gc_num()
         elapsedtime = Base.time_ns()
         #if the channel is empty call the base function to add stuff too it
         #Note State_channel is a global that gets created in execute_mission() on every worker!!!!
         if !isnothing( fn )
             if !isready( remote_hook )#channel is empty!
-                println("???")
                 put!( remote_hook, isnothing( src ) ? fn()() : fn()( src ) )
             else
-                println("???2")
                 #if the channel is full, put the previous result into the next function...
                 put!( remote_hook, fn()(take!( remote_hook )) )
             end
         else
-            println("???3")
             put!(remote_hook, src )#is actually a string or metadata?
         end
-        println("...")
         elapsedtime = Base.time_ns() - elapsedtime
         diff = Base.GC_Diff( Base.gc_num(), stats )
         jobstats = JobStatisticsSample( elapsedtime * 1e-9, diff.allocd * 1e-6 )
-        println("!!!")
         put!( local_hook, WorkerCommunication( jobstats, task_ID, ready ) )
-    #catch #uh oh
-    #    put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed ) )
+    catch #uh oh
+        put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed ) )
         #if this fails we've lost a worker?
-    #end
+    end
 end

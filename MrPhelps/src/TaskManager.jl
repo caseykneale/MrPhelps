@@ -3,7 +3,7 @@ mutable struct Scheduler
     nm                   ::NodeManager
     worker_communications::Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }
     task_stats           ::Dict{ Int, JobStatistics }
-    worker_channels      ::Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }
+    worker_channels      ::Dict{ Int, RemoteChannel{ Channel{ Any } } }
 end
 
 """
@@ -24,15 +24,15 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     worker_task_map = initial_task_assignments( nm, mission )
     #now lets make channels for these workers to talk to the local thread!
     worker_comm_map = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()
-    worker_channels = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()    #everyworker needs their own channel to save state of tasks in.
+    worker_channels = Dict{ Int, RemoteChannel{ Channel{ Any } } }()    #everyworker needs their own channel to save state of tasks in.
     task_stats      = Dict{ Int, Any }()
     @sync for (worker, metadata) in nm.computemeta
-        #worker_comm_map[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker )
-        #worker_channels[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker )
-        #@spawnat worker put!( worker_comm_map[ worker ], WorkerCommunication(   JobStatisticsSample(),
-        #                                                                        worker_task_map[ worker ],
-        #                                                                        available ) )
-        #task_stats[ worker ] = JobStatistics()
+        worker_comm_map[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker )
+        worker_channels[ worker ] = RemoteChannel( () -> Channel{Any}(1), worker )
+        @spawnat worker put!( worker_comm_map[ worker ], WorkerCommunication(   JobStatisticsSample(),
+                                                                                worker_task_map[ worker ],
+                                                                                available ) )
+        task_stats[ worker ] = JobStatistics()
     end
     @info("Global states assigned to workers")
     #get all the info nice and tidy...
@@ -94,20 +94,21 @@ function spawn_listeners(sc::Scheduler)
         for ( worker, task ) in sc.worker_communications
             if isready( sc.worker_communications[ worker ] )
                 bufferworker = fetch( @spawnat worker take!( sc.worker_communications[ worker ] ) )
-                println(".!.")
-                println(bufferworker)
                 if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
                     #this task is done
-                    println("...")
-                    println(bufferworker.last_task)
-                    nexttask = neighbors(sc.g, bufferworker.last_task)
+                    nexttask = neighbors(sc.mission.g, bufferworker.last_task)
                     if length(nexttask) == 0
                         #we're at the end of our DAG!
                     else
-                        fit!( sc.task_stats[ bufferworker.last_task ].elapsed_time, bufferworker.task_stats.elapsedtime )
-                        fit!( sc.task_stats[ bufferworker.last_task ].bytes_allocated, bufferworker.task_stats.bytes_allocated )
+                        println(bufferworker)
+                        OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].elapsed_time,
+                                                    bufferworker.task_stats.elapsed_time )
+                        println("...")
+                        OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
+                                                bufferworker.task_stats.bytes_allocated )
                         #assign next task
                         @spawnat worker dispatch_task(  sc.mission.meta[ nexttask ].fn,
+                                                        sc.worker_channels[ worker ],
                                                         sc.worker_communications[ worker ],
                                                         nexttask )
                         println( "ding!" )
