@@ -1,6 +1,7 @@
 using Pkg
 Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop/Playground/MrPhelps/"))
-using MrPhelps, Distributed, ClusterManagers, SharedArrays, Dates
+using MrPhelps, Distributed, Dates
+#"c" |> @thunk( println )()
 
 localonly = true
 #                        Connect Machines!
@@ -34,20 +35,37 @@ println( nm.machinenodemap )
 #                        Define Some Tasks
 mission = MissionGraph()
 #Add an unconnected node to the graph
-add_node!(mission, Stash("/home/caseykneale/Desktop/megacsv.csv", [ Local ], 1 ) )
+add_node!(mission, Stash( "/home/caseykneale/Desktop/megacsv.csv",
+                            @thunk( string ), [ Local ], 1 ) )
 #Add a new node to the graph but connect it to the last node laid down
-attach_node!(mission, Agent( sum, [ Local ] ) )
+attach_node!(mission, Agent( @thunk( prod ), [ Local ] ) )
 #Add another new node, but give it a bookmark so we can find it later!
-attach_node!(mission, :prod => Agent( prod, [ Local ] ) )
+attach_node!(mission, :prod => Agent( @thunk( prod ), [ Local ] ) )
 #Look we can add another new node to the graph unattached to anything
-add_node!(mission, :final => Agent( println, [Local] ) )
+add_node!(mission, :final => Agent( @thunk( println ), [Local] ) )
 #And now we can connect it to something else we bookmarked!
 connect!(mission, :prod, :final)
 #We made a very simple linear chain. Yay!
-add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv", [ Local ], 1 ) )
-connect!(mission, :references, :prod)
+add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv",
+                                    @thunk( string ), [ Local ], 1 ) )
+connect!( mission, :references, :prod )
 
-nm.computemeta[2]
+# @everywhere ast(x) = x * " all"
+# @everywhere thunked = @thunk ast
+# @everywhere thunked()
+# @spawnat 2 global abc = Channel()
+# @spawnat 2 put!(abc, "bleep it")
+# @everywhere begin
+#     function fnln(thunk)
+#         thunk.f()(take!(abc))
+#     end
+# end
+# abcd = fetch( @spawnat 2 fnln(thunked) )
+# abc
+
+sc = Scheduler( nm, mission )
+execute_mission( sc )
+@async spawn_listeners( sc )
 
 ##########################################################################
 # Most naive scheme
@@ -60,24 +78,28 @@ nm.computemeta[2]
 nm.machinenodemap
 
 schedule = Scheduler( nm, mission )
-
-#rc = RemoteChannel(2)
-@everywhere global rc = Channel()
-@everywhere delayedthing1( x ) = ( put!(rc, x ^ 2 ); sleep( 30 ); )
-@everywhere delayedthing2(  ) = ( sleep( 5 ); put!( take!(rc) ^ 2 ); sleep( 30 ); )
-@everywhere gimmethethingnow(  ) = :done
-#execute things remotely
-x = @async begin
-    z = @spawnat 2 delayedthing1( 2 )
-    #fetch(z)
-    :done
-end
-fetch(x)
-println( "cookie" )
-
-#===============================================
+# ===============================================
 #               Below is all WIP
-#===============================================
+# ===============================================
+# Graph     <->     Tasks       <->     Machine
+# Node      <->     Machine
+# Assign:
+#   - Find parent task
+#   - Find nodes to meet requirements
+# Execute:
+#   - (async) Dispatch task thunks to nodes and run
+#   - (async) Result is stored to a channel & statistics sent back to local
+#   - Local decides the next task for the jobs available
+# More fleshed out...
+#   - Every worker gets a communication remotechannel!
+#   - Dispatch thunks
+#   - Thunks wrapped in a function which
+#       :wraps thunks and deploys args
+#       :computes runtime stats
+#       :ferries results to remote channel
+#       :
+
+
 #NodeManager maps Machines to Workers
 #MissionGraph links Tasks to Tasks, and Tasks to Workers
 #I need to link available machines to available tasks least effort way: make a map
@@ -118,7 +140,6 @@ end
 
 worker_count( nm, Local )
 total_worker_counts( nm )
-
 
 total_worker_counts = sum( [ length( workers ) for ( name, workers ) in nm.machinenodemap ] )
 nm.machinenodemap

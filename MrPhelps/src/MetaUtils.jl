@@ -26,7 +26,7 @@ function worker_meta()
             try
                 ram = Sys.free_memory()
                 cpuspd = Sys.cpu_info()[1].speed
-                local_metadata[ worker.id ]   = WorkerMetaData( Distributed.LocalProcess,
+                local_metadata[ worker.id ]      = WorkerMetaData( Distributed.LocalProcess,
                                                                 worker.bind_addr, cpuspd, ram )
             catch err
                 if isa(err, UndefRefError)
