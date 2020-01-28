@@ -92,12 +92,13 @@ function spawn_listeners(sc::Scheduler)
     while true
         #look for tasks that have completed!
         for ( worker, task ) in sc.worker_communications
-            try
-                if isready( sc.worker_communications[ worker ] )
+            #try
+                if isready( sc.worker_communications[ worker ] ) &&
+                    isready( sc.worker_channels[ worker ] )
                     bufferworker = fetch( @spawnat worker take!( sc.worker_communications[ worker ] ) )
                     if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
                         #this task is done
-                        nexttask = neighbors(sc.mission.g, bufferworker.last_task)
+                        nexttask = first( neighbors(sc.mission.g, bufferworker.last_task) )
                         if length(nexttask) == 0
                             #we're at the end of a DAG!
                         else
@@ -106,9 +107,12 @@ function spawn_listeners(sc::Scheduler)
                             OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
                                                     bufferworker.task_stats.bytes_allocated )
                             #assign next task
+                            @spawnat worker sc.mission.meta[ nexttask ].fn
+                            #println(sc.mission.meta[ nexttask ].fn)
+                            #println(sc.worker_channels[ worker ])
+                            #println(sc.worker_communications[ worker ])
+                            #println(nexttask)
                             @spawnat worker begin
-                                sc.mission.meta[ nexttask ].fn
-                                println("alll gooood")
                                 dispatch_task(  sc.mission.meta[ nexttask ].fn,
                                                 sc.worker_channels[ worker ],
                                                 sc.worker_communications[ worker ],
@@ -119,8 +123,9 @@ function spawn_listeners(sc::Scheduler)
                         #ToDo: handle errors
                     end
                 end
-            catch
-            end
+            #catch
+            #end
+            sleep(0.1500)
         end #end for workers
     end
 end

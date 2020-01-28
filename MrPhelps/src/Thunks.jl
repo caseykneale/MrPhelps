@@ -56,8 +56,6 @@ function dispatch_task( fn::Union{Thunk, Function},
                         local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
                         task_ID::Int,
                         src = nothing )
-
-    println(fn)
     try
         stats = Base.gc_num()
         elapsedtime = Base.time_ns()
@@ -68,7 +66,8 @@ function dispatch_task( fn::Union{Thunk, Function},
                 put!( remote_hook, isnothing( src ) ? fn()() : fn()( src ) )
             else
                 #if the channel is full, put the previous result into the next function...
-                put!( remote_hook, fn()(take!( remote_hook )) )
+                curval = take!( remote_hook )
+                put!( remote_hook, fn()(curval) )
             end
         else
             put!(remote_hook, src )#is actually a string or metadata?

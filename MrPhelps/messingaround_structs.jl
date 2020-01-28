@@ -1,7 +1,6 @@
 using Pkg
 Pkg.API.develop(Pkg.PackageSpec(name="MrPhelps", path="/home/caseykneale/Desktop/Playground/MrPhelps/"))
 using MrPhelps, Distributed, Dates
-#"c" |> @thunk( println )()
 
 localonly = true
 #                        Connect Machines!
@@ -35,7 +34,7 @@ println( nm.machinenodemap )
 #                        Define Some Tasks
 mission = MissionGraph()
 #Add an unconnected node to the graph
-add_node!(mission, Stash( "/home/caseykneale/Desktop/megacsv.csv",
+add_node!(mission, Stash(   "/home/caseykneale/Desktop/megacsv.csv",
                             @thunk( string ), [ Local ], 1 ) )
 #Add a new node to the graph but connect it to the last node laid down
 attach_node!(mission, Agent( @thunk( prod ), [ Local ] ) )
