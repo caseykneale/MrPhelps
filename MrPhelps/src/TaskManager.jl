@@ -1,3 +1,5 @@
+world_age() = ccall( :jl_get_world_counter, Int, () )
+
 mutable struct Scheduler
     mission              ::MissionGraph
     nm                   ::NodeManager
@@ -32,7 +34,9 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
         @spawnat worker put!( worker_comm_map[ worker ], WorkerCommunication(   JobStatisticsSample(),
                                                                                 worker_task_map[ worker ],
                                                                                 available ) )
-        task_stats[ worker ] = JobStatistics()
+    end
+    for (node, other) in mission.meta
+        task_stats[ node ] = JobStatistics()
     end
     @info("Global states assigned to workers")
     #get all the info nice and tidy...
@@ -76,6 +80,7 @@ function execute_mission( sc::Scheduler )
                     end
                 end
             catch
+                @error("Failed to spawn initial taskes.")
                 #failure to do @spawnat means something funamentally bad happened :/
                 #@async sc.worker_state[ worker ] = WORKER_STATE.failed
             end
@@ -89,37 +94,52 @@ function spawn_listeners(sc::Scheduler)
     #follow this pattern. I'd like a more actor style or true event listener style but this is okay for now!
     #@async spawn_listeners( sc )
     @info("Worker communications established...")
+    eventloop_world_age = world_age()
     while true
         #look for tasks that have completed!
-        for ( worker, task ) in sc.worker_communications
-            if isready( sc.worker_communications[ worker ] )
-                bufferworker = fetch( @spawnat worker take!( sc.worker_communications[ worker ] ) )
-                if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
-                    #this task is done
-                    nexttask = neighbors(sc.mission.g, bufferworker.last_task)
-                    if length(nexttask) == 0
-                        #we're at the end of our DAG!
-                    else
-                        println(bufferworker)
-                        OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].elapsed_time,
-                                                    bufferworker.task_stats.elapsed_time )
-                        println("...")
-                        OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
-                                                bufferworker.task_stats.bytes_allocated )
-                        #assign next task
-                        @spawnat worker dispatch_task(  sc.mission.meta[ nexttask ].fn,
-                                                        sc.worker_channels[ worker ],
-                                                        sc.worker_communications[ worker ],
-                                                        nexttask )
-                        println( "ding!" )
+        # if world_age() > eventloop_world_age
+        #     @info("restarting mission communications")
+        #     @async spawn_listeners( sc )
+        #     break
+        # end #borrowed from signals.jl without permission yet
+        keyset = [k for k in keys(sc.worker_communications)]
+        @sync for worker in keyset #( worker, task ) in sc.worker_communications
+            #try
+                if isready( sc.worker_communications[ worker ] ) && isready( sc.worker_channels[ worker ] )
+                    bufferworker = take!( sc.worker_communications[ worker ] ) #fetch( @spawnat worker )
+                    if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
+                        #this task is done
+                        nexttask = neighbors(sc.mission.g, bufferworker.last_task)
+                        if length(nexttask) == 0
+                            println("DAG completed")
+                            #we're at the end of a DAG!
+                        else
+                            nexttask = first(nexttask)
+                            OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].elapsed_time,
+                                                        bufferworker.task_stats.elapsed_time )
+                            OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
+                                                    bufferworker.task_stats.bytes_allocated )
+                            #assign next task
+                            @spawnat worker begin
+                                sc.mission.meta[ nexttask ].fn
+                                dispatch_task(  sc.mission.meta[ nexttask ].fn,
+                                                sc.worker_channels[ worker ],
+                                                sc.worker_communications[ worker ],
+                                                nexttask )
+                            end
+                            bufferworker.last_task
+                        end
+                    elseif bufferworker.state == failed
+                        #ToDo: handle errors
+                        @error("Srs error")
                     end
-                elseif bufferworker.state == failed
-                    #ToDo: handle errors
                 end
-            end
+            #catch
+            #end
         end #end for workers
-    end
-end
+        sleep(0.0010)
+    end #end never ending while loop
+end #end function...
 
 """
     initial_task_assignments(nm::NodeManager, mission::MissionGraph)

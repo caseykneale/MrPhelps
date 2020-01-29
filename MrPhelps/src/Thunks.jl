@@ -2,7 +2,7 @@ struct JobStatistics{A}
     elapsed_time::A
     bytes_allocated::A
 end
-JobStatistics() = JobStatistics(Series( Mean(), Variance() ), Series( Mean(), Variance() ))
+JobStatistics() = JobStatistics( Series( Mean(), Variance() ), Series( Mean(), Variance() ))
 
 struct JobStatisticsSample
     elapsed_time::Union{Missing, Float64}
@@ -66,7 +66,9 @@ function dispatch_task( fn::Union{Thunk, Function},
                 put!( remote_hook, isnothing( src ) ? fn()() : fn()( src ) )
             else
                 #if the channel is full, put the previous result into the next function...
-                put!( remote_hook, fn()(take!( remote_hook )) )
+                curval = fn()( take!( remote_hook ) )
+                put!( remote_hook, curval)
+                println("new thing: $curval")
             end
         else
             put!(remote_hook, src )#is actually a string or metadata?
@@ -76,6 +78,7 @@ function dispatch_task( fn::Union{Thunk, Function},
         jobstats = JobStatisticsSample( elapsedtime * 1e-9, diff.allocd * 1e-6 )
         put!( local_hook, WorkerCommunication( jobstats, task_ID, ready ) )
     catch #uh oh
+        println("FAILED JOB!")
         put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed ) )
         #if this fails we've lost a worker?
     end
