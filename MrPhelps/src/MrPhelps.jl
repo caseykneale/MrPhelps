@@ -29,6 +29,7 @@ module MrPhelps
             terminalnodes, terminatingnodes, parentnodes, execution_paths
 
     include("TaskManager.jl")
-    export Scheduler, execute_mission, spawn_listeners, initial_task_assignments
+    export world_age, Scheduler, execute_mission, spawn_listeners,
+                initial_task_assignments
 
 end # module
