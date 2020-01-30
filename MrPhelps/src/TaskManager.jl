@@ -33,16 +33,13 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
     #now lets make channels for these workers to talk to the local thread!
     worker_comm_map = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()
     worker_channels = Dict{ Int, RemoteChannel{ Channel{ Any } } }()    #everyworker needs their own channel to save state of tasks in.
-    task_stats      = Dict{ Int, Any }()
+    task_stats      = Dict{ Int, Any }( [ node => JobStatistics() for (node, other) in mission.meta])
     @sync for (worker, metadata) in nm.computemeta
         worker_comm_map[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker )
         worker_channels[ worker ] = RemoteChannel( () -> Channel{Any}(1), worker )
         @spawnat worker put!( worker_comm_map[ worker ], WorkerCommunication(   JobStatisticsSample(),
                                                                                 worker_task_map[ worker ],
                                                                                 available ) )
-    end
-    for (node, other) in mission.meta
-        task_stats[ node ] = JobStatistics()
     end
     @info("Global states assigned to workers")
     return Scheduler( mission, nm, worker_comm_map, task_stats, worker_channels )
@@ -65,7 +62,6 @@ function execute_mission( sc::Scheduler )
                     #make a single buffer to get job statistics from a called and finished fn
                     if isa( sc.mission.meta[ task.last_task ], Stash )
                         #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
-                        
                         @spawnat worker begin
                             sc.mission.meta[ task.last_task ].fn
                             dispatch_task(  sc.mission.meta[ task.last_task ].fn,
@@ -85,7 +81,7 @@ function execute_mission( sc::Scheduler )
                     end
                 end
             catch
-                @error("Failed to spawn initial taskes.")
+                @error("Failed to spawn initial tasks.")
                 #failure to do @spawnat means something funamentally bad happened :/
                 #@async sc.worker_state[ worker ] = WORKER_STATE.failed
             end

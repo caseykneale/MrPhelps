@@ -1,5 +1,4 @@
 flip( a::Dict ) = Dict( Iterators.flatten( [ v .=> k for (k,v) in a ] ) )
-#flip( nm.machinenodemap )
 
 struct WorkerMetaData
     workertype::Type
@@ -37,10 +36,8 @@ function worker_meta()
                 end
             end
         else
-            cpuspd_c = @spawnat worker.id Sys.cpu_info()[1].speed
-            cpuspd = fetch(cpuspd_c)
-            ram_c = @spawnat worker.id Sys.free_memory()
-            ram = fetch(ram_c)
+            cpuspd = fetch( @spawnat worker.id Sys.cpu_info()[1].speed )
+            ram = fetch( @spawnat worker.id Sys.free_memory() )
             compute_metadata[ worker.id ] = WorkerMetaData( typeof( worker.manager ),
                                                             worker.config.host, cpuspd, ram )
         end
