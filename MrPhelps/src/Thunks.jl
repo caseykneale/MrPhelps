@@ -78,8 +78,7 @@ function dispatch_task( fn::Union{Thunk, Function},
         jobstats = JobStatisticsSample( elapsedtime * 1e-9, diff.allocd * 1e-6 )
         put!( local_hook, WorkerCommunication( jobstats, task_ID, ready ) )
     catch #uh oh
-        println("FAILED JOB!")
+        @info("Worker failed on task node: $task_ID .")
         put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed ) )
-        #if this fails we've lost a worker?
     end
 end

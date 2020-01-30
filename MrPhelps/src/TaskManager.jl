@@ -1,3 +1,9 @@
+"""
+    world_age()
+
+Get the julia world age.
+
+"""
 world_age() = ccall( :jl_get_world_counter, Int, () )
 
 mutable struct Scheduler
@@ -39,8 +45,6 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
         task_stats[ node ] = JobStatistics()
     end
     @info("Global states assigned to workers")
-    #get all the info nice and tidy...
-    #worker_state    = Dict( [ worker => available for ( worker, task ) in worker_task_map ] )
     return Scheduler( mission, nm, worker_comm_map, task_stats, worker_channels )
 end
 
@@ -61,6 +65,7 @@ function execute_mission( sc::Scheduler )
                     #make a single buffer to get job statistics from a called and finished fn
                     if isa( sc.mission.meta[ task.last_task ], Stash )
                         #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
+                        
                         @spawnat worker begin
                             sc.mission.meta[ task.last_task ].fn
                             dispatch_task(  sc.mission.meta[ task.last_task ].fn,
@@ -89,26 +94,25 @@ function execute_mission( sc::Scheduler )
     @info("Done distributing initial tasks. Good luck")
 end
 
+"""
+    spawn_listeners(sc:Scheduler)
+
+Starts an event listener and task dispatcher loop.
+
+"""
 function spawn_listeners(sc::Scheduler)
     #Kick off the event listener loop... This is a bit ugly but whatever, Observables, and Signals
     #follow this pattern. I'd like a more actor style or true event listener style but this is okay for now!
-    #@async spawn_listeners( sc )
     @info("Worker communications established...")
     eventloop_world_age = world_age()
     while true
         #look for tasks that have completed!
-        # if world_age() > eventloop_world_age
-        #     @info("restarting mission communications")
-        #     @async spawn_listeners( sc )
-        #     break
-        # end #borrowed from signals.jl without permission yet
         keyset = [k for k in keys(sc.worker_communications)]
-        @sync for worker in keyset #( worker, task ) in sc.worker_communications
+        for worker in keyset
             #try
                 if isready( sc.worker_communications[ worker ] ) && isready( sc.worker_channels[ worker ] )
-                    bufferworker = take!( sc.worker_communications[ worker ] ) #fetch( @spawnat worker )
+                    bufferworker = take!( sc.worker_communications[ worker ] )
                     if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
-                        #this task is done
                         nexttask = neighbors(sc.mission.g, bufferworker.last_task)
                         if length(nexttask) == 0
                             println("DAG completed")
@@ -130,8 +134,7 @@ function spawn_listeners(sc::Scheduler)
                             bufferworker.last_task
                         end
                     elseif bufferworker.state == failed
-                        #ToDo: handle errors
-                        @error("Srs error")
+                        @error("Srs error") #ToDo: handle errors
                     end
                 end
             #catch

@@ -43,7 +43,7 @@ function Expand( str::String, replace_map::Dict{String,Vector{String}} )
     idx = sortperm(locations, by = x -> first( x ) )
     locations = locations[idx]
     #Handle edgecase where string starts with keyword to be replaced
-    ( lastloc, tag ) = locations[ 1 ]
+    ( lastloc, tag ) = first( locations )
     firstcut = ( lastloc[ 1 ] > 1 ) ? str[ 1 : ( lastloc - 1 ) ] : ""
     push!( cuts, firstcut )
     for item in 1 : ( length( locations ) - 1 )

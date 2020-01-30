@@ -61,12 +61,7 @@ execute_mission( sc )
 # isready(sc.worker_communications[3])
 # isready(sc.worker_channels[2])
 # isready(sc.worker_channels[3])
-
-
 sc.task_stats
-take!( sc.worker_communications[2])
-
-mission.meta
 
 ##########################################################################
 # Most naive scheme
@@ -76,9 +71,6 @@ mission.meta
 #       Are there available nodes for open tasks?
 #       Do we need to wait for a worker to open to complete a task?
 ##########################################################################
-nm.machinenodemap
-
-schedule = Scheduler( nm, mission )
 # ===============================================
 #               Below is all WIP
 # ===============================================
@@ -98,51 +90,3 @@ schedule = Scheduler( nm, mission )
 #       :wraps thunks and deploys args
 #       :computes runtime stats
 #       :ferries results to remote channel
-#       :
-
-
-#NodeManager maps Machines to Workers
-#MissionGraph links Tasks to Tasks, and Tasks to Workers
-#I need to link available machines to available tasks least effort way: make a map
-Pkg.add("LightGraphsFlows")
-
-using Clp: ClpSolver # use your favorite LP solver here
-using LightGraphs, LightGraphsFlows
-using SparseArrays
-g = DiGraph(5) # Create a flow-graph
-add_edge!(g, 1, 2)
-add_edge!(g, 2, 3)
-add_edge!(g, 3, 4)
-add_edge!(g, 5, 2)
-
-w = zeros(5,5)
-w[1,2] = 1
-w[2,3] = 1.
-w[3,4] = 1.
-w[5,2] = 0.1
-# v2 -> sink have demand of one
-demand = spzeros(5,5)
-demand[3,4] = 1
-demand[5,4] = 1
-capacity = ones(5,5)
-flow = mincost_flow(g, capacity, demand, w, ClpSolver(), 1, 4)
-flow = mincost_flow(g, capacity, demand, w, ClpSolver(), 5, 4)
-
-
-#function taskwithany()
-for ( task_number, task ) in mission.meta
-    machines_for_task = task.machines
-    workers_available = map( x -> nm.machinenodemap[ x ], machines_for_task )
-    task.min_workers
-end
-#end
-
-
-
-worker_count( nm, Local )
-total_worker_counts( nm )
-
-total_worker_counts = sum( [ length( workers ) for ( name, workers ) in nm.machinenodemap ] )
-nm.machinenodemap
-
-println( nm.machinenodemap )
