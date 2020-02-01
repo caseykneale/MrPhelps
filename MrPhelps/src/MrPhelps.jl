@@ -5,13 +5,12 @@ module MrPhelps
                     "killed, The Secretary will log any knowledge of your actions. This program" *
                     " will hopefully not self-destruct in ten seconds.\n Good luck,")
 
-    using Distributed, ClusterManagers, OnlineStats
-    using LightGraphs, LightGraphsFlows, JLSO
+    using Distributed, ClusterManagers, OnlineStats, LightGraphs, LightGraphsFlows, JLSO
     using Glob, Dates
 
     include("Thunks.jl")
     export JobStatistics, JobStatisticsSample, WORKER_STATE, WorkerCommunication,
-                Thunk, @thunk, dispatch_task, reset_worker
+            Thunk, @thunk, dispatch_task, reset_worker
 
     include("MetaUtils.jl")
     export WorkerMetaData, worker_meta
@@ -27,10 +26,13 @@ module MrPhelps
     export NodeManager, update!, availablemachines, machinenames, worker_count,
             total_worker_counts
 
+    include("MissionNodes.jl")
+    export  MissionNode, Agent, Stash, StashIterator, nextstash!
+
     include("MissionGraph.jl")
-    export  MissionNode, Agent, Stash, StashIterator, MissionGraph, query_metadata, machines,
-            add_node!, attach_node!, addbookmark!, attach_node!, connect!,
-            terminalnodes, terminatingnodes, parentnodes, execution_paths
+    export  MissionGraph, query_metadata, machines, add_node!, attach_node!,
+        addbookmark!, attach_node!, connect!, terminalnodes,
+        terminatingnodes, parentnodes, execution_paths
 
     include("TaskManager.jl")
     export world_age, Scheduler, execute_mission, spawn_listeners,
