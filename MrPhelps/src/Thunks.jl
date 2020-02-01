@@ -89,3 +89,23 @@ function dispatch_task( fn::Union{Thunk, Function},
         put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed ) )
     end
 end
+
+"""
+    reset_worker(  remote_hook::RemoteChannel{ Channel{ Any } },
+                    local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
+                    task_ID::Int )
+
+Resets the remote and local hooks for a worker which has completed its tasking.
+
+"""
+function reset_worker(  remote_hook::RemoteChannel{ Channel{ Any } },
+                        local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
+                        task_ID::Int )
+    try
+        put!( remote_hook, nothing ) #Reset memory
+        put!( local_hook, WorkerCommunication( JobStatisticsSample(), 0, available ) )
+    catch #uh oh
+        @info("Failed to reset worker...")
+        put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed ) )
+    end
+end

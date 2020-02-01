@@ -85,9 +85,7 @@ Adds a bookmark or tag to the last placed node.
 
 """
 function addbookmark!( graph::MissionGraph, marker::Symbol )
-    if haskey(graph.bookmarks, marker)
-        @warn("Bookmark $marker already exists - it has been overwritten.")
-    end
+    haskey(graph.bookmarks, marker) && @warn("Bookmark $marker already exists - it has been overwritten.")
     graph.bookmarks[ marker ] = graph.nv
 end
 

@@ -109,14 +109,16 @@ function spawn_listeners(sc::Scheduler)
                     if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
                         nexttask = neighbors(sc.mission.g, bufferworker.last_task)
                         if length(nexttask) == 0
-                            println("DAG completed")
-                            #we're at the end of a DAG!
+                            @info("Worker #$worker completed round trip of a DAG.")
+                            reset_worker(   sc.worker_channels[ worker ],
+                                            sc.worker_communications[ worker ],
+                                            nexttask )
                         else
                             nexttask = first(nexttask)
                             OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].elapsed_time,
-                                                        bufferworker.task_stats.elapsed_time )
+                                                bufferworker.task_stats.elapsed_time )
                             OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
-                                                    bufferworker.task_stats.bytes_allocated )
+                                                bufferworker.task_stats.bytes_allocated )
                             #assign next task
                             @spawnat worker begin
                                 sc.mission.meta[ nexttask ].fn

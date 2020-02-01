@@ -69,9 +69,7 @@ function Base.iterate( iter::Expand, state = ( nothing ) )
         subiter, state = collect( iterate( iter.productiter ) )
     else
         nextiter = iterate( iter.productiter, state )
-        if isnothing( nextiter )
-            return nothing
-        end
+        isnothing( nextiter ) && return nothing
         subiter, state = collect( nextiter )
     end
     return interleavestrings( iter.statictxt, collect( subiter ) ), state
