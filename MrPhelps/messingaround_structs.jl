@@ -57,16 +57,30 @@ execute_mission( sc )
 
 #for debugging
 #sc.worker_communications
-# isready(sc.worker_communications[2])
-# isready(sc.worker_communications[3])
-# isready(sc.worker_channels[2])
-# isready(sc.worker_channels[3])
+isready(sc.worker_communications[2])
+isready(sc.worker_communications[3])
+isready(sc.worker_channels[2])
+isready(sc.worker_channels[3])
+
+mission = MissionGraph()
+
+data_file_fomat = "data_{year}-{month}-{day}.csv"
+expansion = Dict(   "year"  => [2020],
+                    "month" => [7,11],
+                    "day"   => collect(1:30))
+
+add_node!(mission, StashIterator(  Expand(data_file_fomat, expansion),
+                                    Stash("", @thunk( string ), [ Local ], 1 ) ) )
+attach_node!(mission, Agent( @thunk( uppercase ), [ Local ] ) )
+attach_node!(mission, :prod => Agent( @thunk( lowercase ), [ Local ] ) )
+add_node!(mission, :final => Agent( @thunk( println ), [Local] ) )
+connect!(mission, :prod, :final)
+add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv",
+                                    @thunk( string ), [ Local ], 1 ) )
+connect!( mission, :references, :prod )
 
 
-sc.task_stats
-take!( sc.worker_communications[2])
 
-mission.meta
 
 ##########################################################################
 # Most naive scheme
@@ -76,9 +90,6 @@ mission.meta
 #       Are there available nodes for open tasks?
 #       Do we need to wait for a worker to open to complete a task?
 ##########################################################################
-nm.machinenodemap
-
-schedule = Scheduler( nm, mission )
 # ===============================================
 #               Below is all WIP
 # ===============================================
@@ -98,51 +109,17 @@ schedule = Scheduler( nm, mission )
 #       :wraps thunks and deploys args
 #       :computes runtime stats
 #       :ferries results to remote channel
-#       :
 
-
-#NodeManager maps Machines to Workers
-#MissionGraph links Tasks to Tasks, and Tasks to Workers
-#I need to link available machines to available tasks least effort way: make a map
-Pkg.add("LightGraphsFlows")
-
-using Clp: ClpSolver # use your favorite LP solver here
-using LightGraphs, LightGraphsFlows
-using SparseArrays
-g = DiGraph(5) # Create a flow-graph
-add_edge!(g, 1, 2)
-add_edge!(g, 2, 3)
-add_edge!(g, 3, 4)
-add_edge!(g, 5, 2)
-
-w = zeros(5,5)
-w[1,2] = 1
-w[2,3] = 1.
-w[3,4] = 1.
-w[5,2] = 0.1
-# v2 -> sink have demand of one
-demand = spzeros(5,5)
-demand[3,4] = 1
-demand[5,4] = 1
-capacity = ones(5,5)
-flow = mincost_flow(g, capacity, demand, w, ClpSolver(), 1, 4)
-flow = mincost_flow(g, capacity, demand, w, ClpSolver(), 5, 4)
-
-
-#function taskwithany()
-for ( task_number, task ) in mission.meta
-    machines_for_task = task.machines
-    workers_available = map( x -> nm.machinenodemap[ x ], machines_for_task )
-    task.min_workers
+macro ift(ex...)
+    @assert( length(ex) == 3, "malformed if/then statement.")
+    @assert( ex[ 2 ] == :then, "malformed if/then statement.")
+    quote
+        local conditional   = $(esc( ex[1] ))
+        local trueresponse  = $(esc( ex[3] ))
+        return conditional  ? trueresponse : nothing
+    end
 end
-#end
 
-
-
-worker_count( nm, Local )
-total_worker_counts( nm )
-
-total_worker_counts = sum( [ length( workers ) for ( name, workers ) in nm.machinenodemap ] )
-nm.machinenodemap
-
-println( nm.machinenodemap )
+abc() = "dfg"
+innerfun1() = @ift 1==1 then abc()
+innerfun3(a, b) = @ift a ==1 then b

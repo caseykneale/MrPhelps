@@ -1,3 +1,9 @@
+"""
+    world_age()
+
+Get the julia world age. Borrowed from Signals.jl.
+
+"""
 world_age() = ccall( :jl_get_world_counter, Int, () )
 
 mutable struct Scheduler
@@ -12,7 +18,7 @@ end
     Scheduler( nm::NodeManager, mission::MissionGraph )
 
 Constructs a Scheduler object from a NodeManager and MissionGraph. From a high level
-the Scheduler contains mapping from which nodes pertain to which machines, and
+the Scheduler contains mappings from which nodes pertain to which machines, and
 which tasks can be assigned to which workers. This constructor initializes the DAG, by
 finding all parent nodes in a DAG, and allocating as many resources to them as possible.
 
@@ -20,14 +26,12 @@ finding all parent nodes in a DAG, and allocating as many resources to them as p
 function Scheduler( nm::NodeManager, mission::MissionGraph )
     # Find each flow from each parent to it's respective terminal
     sinks = terminalnodes( mission.g )
-    #find how each parent propagates to a terminal node
-    #possible_paths = execution_paths( mission )
     #map out initial worker to task relationships - naively
     worker_task_map = initial_task_assignments( nm, mission )
     #now lets make channels for these workers to talk to the local thread!
     worker_comm_map = Dict{ Int, RemoteChannel{ Channel{ WorkerCommunication } } }()
     worker_channels = Dict{ Int, RemoteChannel{ Channel{ Any } } }()    #everyworker needs their own channel to save state of tasks in.
-    task_stats      = Dict{ Int, Any }()
+    task_stats      = Dict{ Int, Any }( [ node => JobStatistics() for (node, other) in mission.meta])
     @sync for (worker, metadata) in nm.computemeta
         worker_comm_map[ worker ] = RemoteChannel( () -> Channel{WorkerCommunication}(1), worker )
         worker_channels[ worker ] = RemoteChannel( () -> Channel{Any}(1), worker )
@@ -35,12 +39,7 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
                                                                                 worker_task_map[ worker ],
                                                                                 available ) )
     end
-    for (node, other) in mission.meta
-        task_stats[ node ] = JobStatistics()
-    end
-    @info("Global states assigned to workers")
-    #get all the info nice and tidy...
-    #worker_state    = Dict( [ worker => available for ( worker, task ) in worker_task_map ] )
+    @info("Global states assigned to workers.")
     return Scheduler( mission, nm, worker_comm_map, task_stats, worker_channels )
 end
 
@@ -80,7 +79,7 @@ function execute_mission( sc::Scheduler )
                     end
                 end
             catch
-                @error("Failed to spawn initial taskes.")
+                @error("Failed to spawn initial tasks.")
                 #failure to do @spawnat means something funamentally bad happened :/
                 #@async sc.worker_state[ worker ] = WORKER_STATE.failed
             end
@@ -89,57 +88,66 @@ function execute_mission( sc::Scheduler )
     @info("Done distributing initial tasks. Good luck")
 end
 
+"""
+    spawn_listeners(sc:Scheduler)
+
+Starts an event listener and task dispatcher loop.
+
+"""
 function spawn_listeners(sc::Scheduler)
     #Kick off the event listener loop... This is a bit ugly but whatever, Observables, and Signals
     #follow this pattern. I'd like a more actor style or true event listener style but this is okay for now!
-    #@async spawn_listeners( sc )
     @info("Worker communications established...")
     eventloop_world_age = world_age()
     while true
         #look for tasks that have completed!
-        # if world_age() > eventloop_world_age
-        #     @info("restarting mission communications")
-        #     @async spawn_listeners( sc )
-        #     break
-        # end #borrowed from signals.jl without permission yet
-        keyset = [k for k in keys(sc.worker_communications)]
-        @sync for worker in keyset #( worker, task ) in sc.worker_communications
-            #try
-                if isready( sc.worker_communications[ worker ] ) && isready( sc.worker_channels[ worker ] )
-                    bufferworker = take!( sc.worker_communications[ worker ] ) #fetch( @spawnat worker )
-                    if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
-                        #this task is done
-                        nexttask = neighbors(sc.mission.g, bufferworker.last_task)
-                        if length(nexttask) == 0
-                            println("DAG completed")
-                            #we're at the end of a DAG!
-                        else
-                            nexttask = first(nexttask)
-                            OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].elapsed_time,
-                                                        bufferworker.task_stats.elapsed_time )
-                            OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
-                                                    bufferworker.task_stats.bytes_allocated )
-                            #assign next task
-                            @spawnat worker begin
-                                sc.mission.meta[ nexttask ].fn
-                                dispatch_task(  sc.mission.meta[ nexttask ].fn,
-                                                sc.worker_channels[ worker ],
-                                                sc.worker_communications[ worker ],
-                                                nexttask )
-                            end
-                            bufferworker.last_task
-                        end
-                    elseif bufferworker.state == failed
-                        #ToDo: handle errors
-                        @error("Srs error")
-                    end
-                end
-            #catch
-            #end
-        end #end for workers
+        completion_listener( sc )
+
         sleep(0.0010)
     end #end never ending while loop
 end #end function...
+
+"""
+    completion_listener(sc::Scheduler)
+
+Updates the local storage of a scheduler when tasks are completed, or tasks
+reach the end of a DAG.
+
+"""
+function completion_listener(sc::Scheduler)
+    keyset = [k for k in keys(sc.worker_communications)]
+    for worker in keyset
+        if all( isready.( [sc.worker_communications[ worker ], sc.worker_channels[ worker ] ] ) )
+            bufferworker = take!( sc.worker_communications[ worker ] )
+            if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
+                nexttask = neighbors(sc.mission.g, bufferworker.last_task)
+                if length(nexttask) == 0
+                    @info("Worker #$worker completed round trip of a DAG.")
+                    reset_worker(   sc.worker_channels[ worker ],
+                                    sc.worker_communications[ worker ] )
+                else
+                    nexttask = first(nexttask)
+                    OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].elapsed_time,
+                                        bufferworker.task_stats.elapsed_time )
+                    OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
+                                        bufferworker.task_stats.bytes_allocated )
+                    #assign next task
+                    @spawnat worker begin
+                        sc.mission.meta[ nexttask ].fn
+                        dispatch_task(  sc.mission.meta[ nexttask ].fn,
+                                        sc.worker_channels[ worker ],
+                                        sc.worker_communications[ worker ],
+                                        nexttask )
+                    end
+                    bufferworker.last_task
+                end
+            elseif bufferworker.state == failed
+                @error("Srs error") #ToDo: handle errors
+            end
+        end
+    end #end for workers
+end
+
 
 """
     initial_task_assignments(nm::NodeManager, mission::MissionGraph)
@@ -153,7 +161,7 @@ function initial_task_assignments(nm::NodeManager, mission::MissionGraph) #:< Di
 
     sources = parentnodes( mission.g )
     if sum( [ mission.meta[src].min_workers for src in sources ] ) < workersavailable
-        @warn("More parent node workers requested ($source_demand) then workers available ($workersavailable).")
+        @warn("More parent node workers requested ($source_demand) then workers available ($workersavailable). Some initial tasks will be unfullfilled at initialization.")
     end
     #Distribute jobs to workers by priority
     sources_by_priority = [ [ src, mission.meta[src].min_workers, mission.meta[src].priority ] for src in sources]
@@ -166,16 +174,20 @@ function initial_task_assignments(nm::NodeManager, mission::MissionGraph) #:< Di
         for worker_idx in keys( worker_queue )
             if ( source_demand_by_priority[ src_idx ][ 2 ] > 0 )
                 #ensure the machine the task is bound too matches the worker
-                if (nm.computemeta[ worker_idx].address in mission.meta[ src ].machines) &&
+                if (nm.computemeta[ worker_idx ].address in mission.meta[ src ].machines) &&
                         (worker_queue[worker_idx] == 0)
                     worker_queue[ worker_idx ] = src
                     source_demand_by_priority[ src_idx ][2] -= 1
+                    #handle if this is a stash iterator.
+                    if isa.( mission.meta[ src ].src, StashIterator )
+                        #msnsrc, state = iterate( mission.meta[ src ].src,  )
+                    end
                 end
             else
                 break; #go to source loop - this source has its demand met!
             end
-        end
-    end
+        end #end worker loop
+    end #end source loop
     #Untested
     source_demand = [ mission.meta[src].max_workers - mission.meta[src].min_workers for src in sources ]
     if workersavailable > sum( values( worker_queue ) .> 0 )

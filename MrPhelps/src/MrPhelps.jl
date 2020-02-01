@@ -6,25 +6,29 @@ module MrPhelps
                     " will hopefully not self-destruct in ten seconds.\n Good luck,")
 
     using Distributed, ClusterManagers, OnlineStats
-    using LightGraphs, LightGraphsFlows, SparseArrays
+    using LightGraphs, LightGraphsFlows, JLSO
     using Glob, Dates
 
     include("Thunks.jl")
     export JobStatistics, JobStatisticsSample, WORKER_STATE, WorkerCommunication,
-                Thunk, @thunk, dispatch_task
+                Thunk, @thunk, dispatch_task, reset_worker
 
     include("MetaUtils.jl")
     export WorkerMetaData, worker_meta
 
     include("ConvenienceIterators.jl")
-    export FileIterator, interleavestrings, Expand, VariableGlob
+    export FileIterator, interleavestrings, Expand, VariableGlob, length
+
+    include("Caching.jl")
+    #ToDo: Add functionality
+    #export
 
     include("NodeManager.jl")
     export NodeManager, update!, availablemachines, machinenames, worker_count,
             total_worker_counts
 
     include("MissionGraph.jl")
-    export  MissionNode, Agent, Stash, MissionGraph, query_metadata, machines,
+    export  MissionNode, Agent, Stash, StashIterator, MissionGraph, query_metadata, machines,
             add_node!, attach_node!, addbookmark!, attach_node!, connect!,
             terminalnodes, terminatingnodes, parentnodes, execution_paths
 

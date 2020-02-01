@@ -12,10 +12,10 @@ fullpath = Base.joinpath(datadir, filefmt)
 fauxfilenames = Expand( fullpath, Dict( "experiment" => [ "A", "B", "C" ],
                                         "num"     => [ "1", "2" ] )
                       )
+
 #Make some random 3 column CSV's and save them to disk via the expand call
 for filename in fauxfilenames
     column_names = [ :name, :rand, :randn ]
-
     column_values = [ [ randstring(rand(1:10)[1] + 4)   for entry in 1:entries ],
                       [ rand(1)[1]                      for entry in 1:entries ],
                       [ randn(1)[1]                     for entry in 1:entries ] ]
