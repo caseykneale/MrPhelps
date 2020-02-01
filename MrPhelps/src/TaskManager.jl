@@ -148,7 +148,6 @@ function completion_listener(sc::Scheduler)
     end #end for workers
 end
 
-
 """
     initial_task_assignments(nm::NodeManager, mission::MissionGraph)
 

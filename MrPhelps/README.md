@@ -8,7 +8,7 @@ itself is not very useful. But, it's a good way to define the problem and make a
 minimum viable example.
 
 ### Future Plans
-Will it make it to 1.0 status? That's for the community to decide. This was a learning experience for me personally. I invited many others to contribute selfishly so I could learn from them, but none have so far. My interests, are satisfied as soon as the minimal thing is working. If anyone wants to carry to torch, or help out, afterward I will be around to support! But my skillset is likely better suited to improving other areas in the ecosystem.
+Will it make it to 1.0 status? That's for the community to decide. This was a learning experience for me personally. My interests, are satisfied as soon as the minimal thing is working. If anyone wants to carry to torch, or help out, afterward I will be around to support! But my skillset is likely better suited to improving other areas in the ecosystem.
 
 
 ### Current Design
