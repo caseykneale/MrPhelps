@@ -12,7 +12,7 @@ Agent( fn::Union{Thunk,Function}, machines::Vector{String} ) = Agent( fn, machin
 Agent( fn::Union{Thunk,Function}, machines::Vector{String}, maxworkers::Int ) = Agent( fn, machines, 1, 1, maxworkers, [] )
 
 Base.@kwdef mutable struct Stash <: MissionNode
-    src::Union{String,FileIterator,Vector{String}}
+    src::Union{String, FileIterator, Vector{String} }
     fn::Union{Nothing, Thunk, Function}
     iteratorstate::Any
     machines::Vector{String}
@@ -42,7 +42,7 @@ Performs a quick check to test whether the graph `G` contains no cycles.
 """
 enforceDAG( G::SimpleDiGraph ) = @assert( simplecyclescount(G, 10) == 0, "Graph is no longer a DAG! Please use bookmarking features to maintain your workflow." )
 
-machines( MG::MissionGraph, vtx::Int )     = MG.meta[ vtx ].machines
+machines( MG::MissionGraph, vtx::Int ) = MG.meta[ vtx ].machines
 
 """
     add_node!( graph::MissionGraph, item::Union{Agent, Stash} )
@@ -143,8 +143,8 @@ parentnodes(g::SimpleDiGraph) = findall( indegree(g) .== 0 )
 Given an input SimpleDiGraph, return a dictionary of parent and terminal vertices.
 
 """
-terminatingnodes( G::SimpleDiGraph ) =  Dict(   :parentnodes => parentnodes( G ),
-                                                :terminalnodes => terminalnodes( G ) )
+terminatingnodes( G::SimpleDiGraph ) =  Dict(   :parentnodes    => parentnodes(   G ),
+                                                :terminalnodes  => terminalnodes( G ) )
 
 """
     execution_paths( mission::MissionGraph )

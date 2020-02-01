@@ -39,13 +39,16 @@ Define a [`Thunk`](@ref) wrapping the `expression`, to lazily defer its evaluati
 https://github.com/JuliaDiff/ChainRulesCore.jl/blob/47f5354191773d73a5dc372cd049b01556f6145f/src/differentials/thunks.jl#L73
 """
 macro thunk(expression)
-    # Basically `:(Thunk(() -> $(esc(body))))` but use the location where it is defined. so we get useful stack traces if it errors.
     func = Expr(:->, Expr(:tuple), Expr(:block, __source__, expression))
     return :(Thunk($(esc(func))))
 end
 
 """
-    recieved_task( fn::Union{Thunk, Function} )
+    dispatch_task( fn::Union{Thunk, Function},
+                        remote_hook::RemoteChannel{ Channel{ Any } },
+                        local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
+                        task_ID::Int,
+                        src = nothing )
 
 Executes a worker task on a remote machine. Statistics are sent back to the local scheduler,
 data is stored locally.
@@ -63,14 +66,9 @@ function dispatch_task( fn::Union{Thunk, Function},
         #Note State_channel is a global that gets created in execute_mission() on every worker!!!!
         if !isnothing( fn )
             if !isready( remote_hook ) #channel is empty! should be our first iteration
-                curfilesize = missing
                 if isnothing(src)
                     put!( remote_hook, fn()() )
                 else
-                    try
-                        curfilesize = Base.Filesystem.filesize(src)
-                    catch
-                    end
                     put!( remote_hook, fn()( src ) )
                 end
             else
