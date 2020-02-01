@@ -57,10 +57,10 @@ execute_mission( sc )
 
 #for debugging
 #sc.worker_communications
-# isready(sc.worker_communications[2])
-# isready(sc.worker_communications[3])
-# isready(sc.worker_channels[2])
-# isready(sc.worker_channels[3])
+isready(sc.worker_communications[2])
+isready(sc.worker_communications[3])
+isready(sc.worker_channels[2])
+isready(sc.worker_channels[3])
 sc.task_stats
 
 ##########################################################################
@@ -90,3 +90,17 @@ sc.task_stats
 #       :wraps thunks and deploys args
 #       :computes runtime stats
 #       :ferries results to remote channel
+
+macro ift(ex...)
+    @assert( length(ex) == 3, "malformed if/then statement.")
+    @assert( ex[ 2 ] == :then, "malformed if/then statement.")
+    quote
+        local conditional   = $(esc( ex[1] ))
+        local trueresponse  = $(esc( ex[3] ))
+        return conditional  ? trueresponse : nothing
+    end
+end
+
+abc() = "dfg"
+innerfun1() = @ift 1==1 then abc()
+innerfun3(a, b) = @ift a ==1 then b

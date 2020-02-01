@@ -6,7 +6,7 @@ module MrPhelps
                     " will hopefully not self-destruct in ten seconds.\n Good luck,")
 
     using Distributed, ClusterManagers, OnlineStats
-    using LightGraphs, LightGraphsFlows, SparseArrays
+    using LightGraphs, LightGraphsFlows, JLSO
     using Glob, Dates
 
     include("Thunks.jl")

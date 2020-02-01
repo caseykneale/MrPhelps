@@ -92,20 +92,19 @@ end
 
 """
     reset_worker(  remote_hook::RemoteChannel{ Channel{ Any } },
-                    local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
-                    task_ID::Int )
+                    local_hook::RemoteChannel{ Channel{ WorkerCommunication } })
 
 Resets the remote and local hooks for a worker which has completed its tasking.
 
 """
 function reset_worker(  remote_hook::RemoteChannel{ Channel{ Any } },
-                        local_hook::RemoteChannel{ Channel{ WorkerCommunication } },
-                        task_ID::Int )
+                        local_hook::RemoteChannel{ Channel{ WorkerCommunication } } )
     try
-        put!( remote_hook, nothing ) #Reset memory
+        #think the memory is already reset but the user should have access to this
+        #isready(remote_hook) && put!( remote_hook, nothing ) #Reset memory
         put!( local_hook, WorkerCommunication( JobStatisticsSample(), 0, available ) )
     catch #uh oh
         @info("Failed to reset worker...")
-        put!( local_hook, WorkerCommunication( JobStatisticsSample(), task_ID, failed ) )
+        put!( local_hook, WorkerCommunication( JobStatisticsSample(), 0, failed ) )
     end
 end

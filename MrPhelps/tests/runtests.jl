@@ -5,6 +5,8 @@ using Test
 #Test Case
 @testset "Expand" begin
     tst = "a{name}b{number}c.ext"
+    #test that we safely ignore unused key's/wildcards and get the right length
+    #and also the correct result!
     semantics = Dict(   "name"    => [ "great", "okay", "bad" ],
                         "number"  => [ "1", "2", "3" ],
                         "slumber" => [ "z", "zz","zzz" ] )

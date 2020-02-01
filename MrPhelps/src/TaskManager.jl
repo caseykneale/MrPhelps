@@ -101,44 +101,53 @@ function spawn_listeners(sc::Scheduler)
     eventloop_world_age = world_age()
     while true
         #look for tasks that have completed!
-        keyset = [k for k in keys(sc.worker_communications)]
-        for worker in keyset
-            #try
-                if isready( sc.worker_communications[ worker ] ) && isready( sc.worker_channels[ worker ] )
-                    bufferworker = take!( sc.worker_communications[ worker ] )
-                    if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
-                        nexttask = neighbors(sc.mission.g, bufferworker.last_task)
-                        if length(nexttask) == 0
-                            @info("Worker #$worker completed round trip of a DAG.")
-                            reset_worker(   sc.worker_channels[ worker ],
-                                            sc.worker_communications[ worker ],
-                                            nexttask )
-                        else
-                            nexttask = first(nexttask)
-                            OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].elapsed_time,
-                                                bufferworker.task_stats.elapsed_time )
-                            OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
-                                                bufferworker.task_stats.bytes_allocated )
-                            #assign next task
-                            @spawnat worker begin
-                                sc.mission.meta[ nexttask ].fn
-                                dispatch_task(  sc.mission.meta[ nexttask ].fn,
-                                                sc.worker_channels[ worker ],
-                                                sc.worker_communications[ worker ],
-                                                nexttask )
-                            end
-                            bufferworker.last_task
-                        end
-                    elseif bufferworker.state == failed
-                        @error("Srs error") #ToDo: handle errors
-                    end
-                end
-            #catch
-            #end
-        end #end for workers
+        completion_listener( sc )
+        
         sleep(0.0010)
     end #end never ending while loop
 end #end function...
+
+"""
+    completion_listener(sc::Scheduler)
+
+Updates the local storage of a scheduler when tasks are completed, or tasks
+reach the end of a DAG.
+
+"""
+function completion_listener(sc::Scheduler)
+    keyset = [k for k in keys(sc.worker_communications)]
+    for worker in keyset
+        if all( isready.( [sc.worker_communications[ worker ], sc.worker_channels[ worker ] ] ) )
+            bufferworker = take!( sc.worker_communications[ worker ] )
+            if ( bufferworker.last_task > 0 ) && ( bufferworker.state == ready )
+                nexttask = neighbors(sc.mission.g, bufferworker.last_task)
+                if length(nexttask) == 0
+                    @info("Worker #$worker completed round trip of a DAG.")
+                    reset_worker(   sc.worker_channels[ worker ],
+                                    sc.worker_communications[ worker ] )
+                else
+                    nexttask = first(nexttask)
+                    OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].elapsed_time,
+                                        bufferworker.task_stats.elapsed_time )
+                    OnlineStats.fit!(   sc.task_stats[ bufferworker.last_task ].bytes_allocated,
+                                        bufferworker.task_stats.bytes_allocated )
+                    #assign next task
+                    @spawnat worker begin
+                        sc.mission.meta[ nexttask ].fn
+                        dispatch_task(  sc.mission.meta[ nexttask ].fn,
+                                        sc.worker_channels[ worker ],
+                                        sc.worker_communications[ worker ],
+                                        nexttask )
+                    end
+                    bufferworker.last_task
+                end
+            elseif bufferworker.state == failed
+                @error("Srs error") #ToDo: handle errors
+            end
+        end
+    end #end for workers
+end
+
 
 """
     initial_task_assignments(nm::NodeManager, mission::MissionGraph)
