@@ -11,7 +11,7 @@ module MrPhelps
 
     include("Thunks.jl")
     export JobStatistics, JobStatisticsSample, WORKER_STATE, WorkerCommunication,
-                Thunk, @thunk, dispatch_task
+                Thunk, @thunk, dispatch_task, reset_worker
 
     include("MetaUtils.jl")
     export WorkerMetaData, worker_meta
