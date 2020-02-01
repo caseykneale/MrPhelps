@@ -62,21 +62,12 @@ isready(sc.worker_communications[3])
 isready(sc.worker_channels[2])
 isready(sc.worker_channels[3])
 
-
-
 mission = MissionGraph()
 
 data_file_fomat = "data_{year}-{month}-{day}.csv"
 expansion = Dict(   "year"  => [2020],
                     "month" => [7,11],
                     "day"   => collect(1:30))
-
-n = Expand(data_file_fomat, expansion)
-
-
-for i in Expand(data_file_fomat, expansion)
-    println(i)
-end
 
 add_node!(mission, StashIterator(  Expand(data_file_fomat, expansion),
                                     Stash("", @thunk( string ), [ Local ], 1 ) ) )
