@@ -1,31 +1,42 @@
 abstract type MissionNode ; end
 
-Base.@kwdef mutable struct Agent <: MissionNode
-    fn::Union{ Thunk, Function }
-    machines::Vector{String}
-    priority::Int
-    min_workers::Int
-    max_workers::Int
-    dispatched_workers::Vector{Int}
+#Base.@kwdef 
+mutable struct Agent <: MissionNode
+    fn                  ::Union{ Thunk, Function }
+    machines            ::Vector{String}
+    priority            ::Int
+    min_workers         ::Int
+    max_workers         ::Int
+    dispatched_workers  ::Vector{Int}
 end
 Agent( fn::Union{Thunk,Function}, machines::Vector{String} ) = Agent( fn, machines, 1, 1, 1, [] )
 Agent( fn::Union{Thunk,Function}, machines::Vector{String}, maxworkers::Int ) = Agent( fn, machines, 1, 1, maxworkers, [] )
 
-Base.@kwdef mutable struct Stash <: MissionNode
-    src::Union{String, FileIterator, Vector{String} }
-    fn::Union{Nothing, Thunk, Function}
-    iteratorstate::Any
-    machines::Vector{String}
-    priority::Int
-    min_workers::Int
-    max_workers::Int
-    dispatched_workers::Vector{Int}
+mutable struct Stash <: MissionNode
+    src                 ::String
+    fn                  ::Union{Nothing, Thunk, Function}
+    machines            ::Vector{ String }
+    priority            ::Int
+    min_workers         ::Int
+    max_workers         ::Int
+    dispatched_workers  ::Vector{ Int }
 end
 
-Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String} ) = Stash( src, nothing, nothing, machines, 1, 1, 1, [] )
-Stash( src::Union{String,FileIterator,Vector{String}}, machines::Vector{String}, maxworkers::Int ) = Stash( src, nothing, nothing, machines, 1, 1, maxworkers,[] )
-Stash( src::Union{String,FileIterator,Vector{String}}, fn::Union{Thunk,Function}, machines::Vector{String} ) = Stash( src, fn, nothing, machines, 1, 1, 1, [] )
-Stash( src::Union{String,FileIterator,Vector{String}}, fn::Union{Thunk,Function}, machines::Vector{String}, maxworkers::Int ) = Stash( src, fn, nothing, machines, 1, 1, maxworkers,[] )
+Stash( src::String, machines::Vector{String} ) = Stash( src, nothing, machines, 1, 1, 1, [] )
+Stash( src::String, machines::Vector{String}, maxworkers::Int ) = Stash( src, nothing, machines, 1, 1, maxworkers,[] )
+Stash( src::String, fn::Union{Thunk,Function}, machines::Vector{String} ) = Stash( src, fn, machines, 1, 1, 1, [] )
+Stash( src::String, fn::Union{Thunk,Function}, machines::Vector{String}, maxworkers::Int ) = Stash( src, fn, machines, 1, 1, maxworkers,[] )
+
+mutable struct StashIterator <: MissionNode
+    iter            ::Union{FileIterator, Vector{ String } }
+    iteratorstate   ::Any
+    stash           ::Stash
+end
+function StashIterator( src_iterator::Union{FileIterator,Vector{String}}, stash::Stash )
+    result, state = src_iterator
+    stash.src = result
+    return StashIterator( src_iterator, state, stash )
+end
 
 Base.@kwdef mutable struct MissionGraph
     g::SimpleDiGraph    = SimpleDiGraph()
@@ -70,7 +81,7 @@ Attach node to current path in a graph.
 
 """
 function attach_node!( graph::MissionGraph, item::MissionNode )
-    @assert( graph.nv > 0, "Cannot attach node to an empty graph")
+    @assert( graph.nv > 0, "Cannot attach node to an empty graph. use add_node!( graph, item ) instead.")
     add_vertex!( graph.g )
     graph.nv += 1
     graph.meta[ graph.nv ] = item
@@ -96,7 +107,7 @@ Adds a new node or bookmarked node with an edge from the last placed node and th
 
 """
 function attach_node!( graph::MissionGraph, nameitempair::Pair{Symbol, T} ) where {T<:MissionNode}
-    @assert( graph.nv > 0, "Cannot attach node to an empty graph")
+    @assert( graph.nv > 0, "Cannot attach node to an empty graph. Use add_node!( graph, item ) instead.")
     add_vertex!( graph.g )
     graph.nv += 1
     addbookmark!( graph, first( nameitempair ) )

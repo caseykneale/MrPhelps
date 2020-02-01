@@ -61,7 +61,35 @@ isready(sc.worker_communications[2])
 isready(sc.worker_communications[3])
 isready(sc.worker_channels[2])
 isready(sc.worker_channels[3])
-sc.task_stats
+
+
+
+mission = MissionGraph()
+
+data_file_fomat = "data_{year}-{month}-{day}.csv"
+expansion = Dict(   "year"  => [2020],
+                    "month" => [7,11],
+                    "day"   => collect(1:30))
+
+n = Expand(data_file_fomat, expansion)
+
+
+for i in Expand(data_file_fomat, expansion)
+    println(i)
+end
+
+add_node!(mission, StashIterator(  Expand(data_file_fomat, expansion),
+                                    Stash("", @thunk( string ), [ Local ], 1 ) ) )
+attach_node!(mission, Agent( @thunk( uppercase ), [ Local ] ) )
+attach_node!(mission, :prod => Agent( @thunk( lowercase ), [ Local ] ) )
+add_node!(mission, :final => Agent( @thunk( println ), [Local] ) )
+connect!(mission, :prod, :final)
+add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv",
+                                    @thunk( string ), [ Local ], 1 ) )
+connect!( mission, :references, :prod )
+
+
+
 
 ##########################################################################
 # Most naive scheme

@@ -30,8 +30,9 @@ Expand is             an iterator that replaces keywords in a string, `str`, wit
 permutations in the `replace_map`. To define a keyword it must be enclosed in
 curly brackets `{...}`.
 
+ToDo: Get dictionary type correct...
 """
-function Expand( str::String, replace_map::Dict{String,Vector{String}} )
+function Expand( str::String, replace_map::Dict)#{String, Vector{Any}}) #where {T} #<:Union{String, Real}}
     locations, items, cuts = [], [], []
     #TODO: Char-wise/Trie search instead could be more performant?
     for ( curkey, item ) in replace_map
@@ -39,7 +40,7 @@ function Expand( str::String, replace_map::Dict{String,Vector{String}} )
         @assert(length(firstunitofallmatches) <= 1, "Cannot use keyword $curkey twice in expand statement.")
         if length(firstunitofallmatches) == 1
             locations = vcat( locations, firstunitofallmatches )
-            push!( items, item )
+            push!( items, all(isa.(item, Real)) ? string.(item) : item )
         end
     end
     #sort the order of the items found in the string by which come first!
@@ -57,8 +58,7 @@ function Expand( str::String, replace_map::Dict{String,Vector{String}} )
     #handle end of string, edge case is implicit
     ( lastloc, tag ) = locations[ end ]
     push!( cuts,  str[ ( lastloc + length( tag ) + 2 ) : end] )
-
-    total_len = prod( length.(items[idx]) )
+    total_len = prod( length.( items[ idx ] ) )
     return Expand( cuts, locations, Iterators.product( items[idx]... ), total_len )
 end
 

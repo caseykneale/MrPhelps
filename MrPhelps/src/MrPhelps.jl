@@ -19,12 +19,16 @@ module MrPhelps
     include("ConvenienceIterators.jl")
     export FileIterator, interleavestrings, Expand, VariableGlob, length
 
+    include("Caching.jl")
+    #ToDo: Add functionality
+    #export
+
     include("NodeManager.jl")
     export NodeManager, update!, availablemachines, machinenames, worker_count,
             total_worker_counts
 
     include("MissionGraph.jl")
-    export  MissionNode, Agent, Stash, MissionGraph, query_metadata, machines,
+    export  MissionNode, Agent, Stash, StashIterator, MissionGraph, query_metadata, machines,
             add_node!, attach_node!, addbookmark!, attach_node!, connect!,
             terminalnodes, terminatingnodes, parentnodes, execution_paths
 

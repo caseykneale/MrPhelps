@@ -1,7 +1,7 @@
 """
     world_age()
 
-Get the julia world age.
+Get the julia world age. Borrowed from Signals.jl.
 
 """
 world_age() = ccall( :jl_get_world_counter, Int, () )
@@ -18,7 +18,7 @@ end
     Scheduler( nm::NodeManager, mission::MissionGraph )
 
 Constructs a Scheduler object from a NodeManager and MissionGraph. From a high level
-the Scheduler contains mapping from which nodes pertain to which machines, and
+the Scheduler contains mappings from which nodes pertain to which machines, and
 which tasks can be assigned to which workers. This constructor initializes the DAG, by
 finding all parent nodes in a DAG, and allocating as many resources to them as possible.
 
@@ -39,7 +39,7 @@ function Scheduler( nm::NodeManager, mission::MissionGraph )
                                                                                 worker_task_map[ worker ],
                                                                                 available ) )
     end
-    @info("Global states assigned to workers")
+    @info("Global states assigned to workers.")
     return Scheduler( mission, nm, worker_comm_map, task_stats, worker_channels )
 end
 
@@ -102,7 +102,7 @@ function spawn_listeners(sc::Scheduler)
     while true
         #look for tasks that have completed!
         completion_listener( sc )
-        
+
         sleep(0.0010)
     end #end never ending while loop
 end #end function...
@@ -161,7 +161,7 @@ function initial_task_assignments(nm::NodeManager, mission::MissionGraph) #:< Di
 
     sources = parentnodes( mission.g )
     if sum( [ mission.meta[src].min_workers for src in sources ] ) < workersavailable
-        @warn("More parent node workers requested ($source_demand) then workers available ($workersavailable).")
+        @warn("More parent node workers requested ($source_demand) then workers available ($workersavailable). Some initial tasks will be unfullfilled at initialization.")
     end
     #Distribute jobs to workers by priority
     sources_by_priority = [ [ src, mission.meta[src].min_workers, mission.meta[src].priority ] for src in sources]
@@ -174,16 +174,20 @@ function initial_task_assignments(nm::NodeManager, mission::MissionGraph) #:< Di
         for worker_idx in keys( worker_queue )
             if ( source_demand_by_priority[ src_idx ][ 2 ] > 0 )
                 #ensure the machine the task is bound too matches the worker
-                if (nm.computemeta[ worker_idx].address in mission.meta[ src ].machines) &&
+                if (nm.computemeta[ worker_idx ].address in mission.meta[ src ].machines) &&
                         (worker_queue[worker_idx] == 0)
                     worker_queue[ worker_idx ] = src
                     source_demand_by_priority[ src_idx ][2] -= 1
+                    #handle if this is a stash iterator.
+                    if isa.( mission.meta[ src ].src, StashIterator )
+                        #msnsrc, state = iterate( mission.meta[ src ].src,  )
+                    end
                 end
             else
                 break; #go to source loop - this source has its demand met!
             end
-        end
-    end
+        end #end worker loop
+    end #end source loop
     #Untested
     source_demand = [ mission.meta[src].max_workers - mission.meta[src].min_workers for src in sources ]
     if workersavailable > sum( values( worker_queue ) .> 0 )
