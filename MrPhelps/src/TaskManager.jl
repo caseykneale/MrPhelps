@@ -26,8 +26,6 @@ finding all parent nodes in a DAG, and allocating as many resources to them as p
 function Scheduler( nm::NodeManager, mission::MissionGraph )
     # Find each flow from each parent to it's respective terminal
     sinks = terminalnodes( mission.g )
-    #find how each parent propagates to a terminal node
-    #possible_paths = execution_paths( mission )
     #map out initial worker to task relationships - naively
     worker_task_map = initial_task_assignments( nm, mission )
     #now lets make channels for these workers to talk to the local thread!

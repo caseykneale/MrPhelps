@@ -17,7 +17,7 @@ module MrPhelps
     export WorkerMetaData, worker_meta
 
     include("ConvenienceIterators.jl")
-    export FileIterator, interleavestrings, Expand, VariableGlob
+    export FileIterator, interleavestrings, Expand, VariableGlob, length
 
     include("NodeManager.jl")
     export NodeManager, update!, availablemachines, machinenames, worker_count,

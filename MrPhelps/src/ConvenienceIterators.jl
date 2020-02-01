@@ -20,12 +20,13 @@ struct Expand <: FileIterator
     statictxt::Vector{String}
     mapping::Any
     productiter::Base.Iterators.ProductIterator
+    n::Int
 end
 
 """
     Expand( str::String, replace_map::Dict{String,Vector{String}} )
 
-Expand is an iterator that replaces keywords in a string, `str`, with all
+Expand is             an iterator that replaces keywords in a string, `str`, with all
 permutations in the `replace_map`. To define a keyword it must be enclosed in
 curly brackets `{...}`.
 
@@ -35,9 +36,11 @@ function Expand( str::String, replace_map::Dict{String,Vector{String}} )
     #TODO: Char-wise/Trie search instead could be more performant?
     for ( curkey, item ) in replace_map
         firstunitofallmatches = first.( findall( "{" * curkey * "}", str ) ) .=> curkey
-        @assert(length(firstunitofallmatches) == 1, "Cannot use keyword $curkey twice in expand statement.")
-        locations = vcat( locations, firstunitofallmatches )
-        push!( items, item )
+        @assert(length(firstunitofallmatches) <= 1, "Cannot use keyword $curkey twice in expand statement.")
+        if length(firstunitofallmatches) == 1
+            locations = vcat( locations, firstunitofallmatches )
+            push!( items, item )
+        end
     end
     #sort the order of the items found in the string by which come first!
     idx = sortperm(locations, by = x -> first( x ) )
@@ -55,8 +58,11 @@ function Expand( str::String, replace_map::Dict{String,Vector{String}} )
     ( lastloc, tag ) = locations[ end ]
     push!( cuts,  str[ ( lastloc + length( tag ) + 2 ) : end] )
 
-    return Expand( cuts, locations, Iterators.product( items[idx]... ) )
+    total_len = prod( length.(items[idx]) )
+    return Expand( cuts, locations, Iterators.product( items[idx]... ), total_len )
 end
+
+Base.length(ex::Expand) = ex.n
 
 function Base.iterate( iter::Expand, state = ( nothing ) )
     if isnothing(state)

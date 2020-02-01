@@ -62,8 +62,17 @@ function dispatch_task( fn::Union{Thunk, Function},
         #if the channel is empty call the base function to add stuff too it
         #Note State_channel is a global that gets created in execute_mission() on every worker!!!!
         if !isnothing( fn )
-            if !isready( remote_hook )#channel is empty!
-                put!( remote_hook, isnothing( src ) ? fn()() : fn()( src ) )
+            if !isready( remote_hook ) #channel is empty! should be our first iteration
+                curfilesize = missing
+                if isnothing(src)
+                    put!( remote_hook, fn()() )
+                else
+                    try
+                        curfilesize = Base.Filesystem.filesize(src)
+                    catch
+                    end
+                    put!( remote_hook, fn()( src ) )
+                end
             else
                 #if the channel is full, put the previous result into the next function...
                 curval = fn()( take!( remote_hook ) )
