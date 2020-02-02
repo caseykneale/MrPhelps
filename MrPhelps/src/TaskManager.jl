@@ -58,7 +58,8 @@ function execute_mission( sc::Scheduler )
             try
                 @async begin
                     #make a single buffer to get job statistics from a called and finished fn
-                    if isa( sc.mission.meta[ task.last_task ], Stash )
+                    if isa( sc.mission.meta[ task.last_task ], Stash) ||
+                            isa( sc.mission.meta[ task.last_task ], StashIterator )
                         #if the current task is a stash, we need to handle iteration over collections and their state in the scheduler.
                         @spawnat worker begin
                             sc.mission.meta[ task.last_task ].fn
@@ -159,8 +160,9 @@ function initial_task_assignments(nm::NodeManager, mission::MissionGraph) #:< Di
     worker_queue = Dict( [ worker => 0 for (worker,tmp) in nm.computemeta  ] )
 
     sources = parentnodes( mission.g )
-    if sum( [ mission.meta[src].min_workers for src in sources ] ) < workersavailable
-        @warn("More parent node workers requested ($source_demand) then workers available ($workersavailable). Some initial tasks will be unfullfilled at initialization.")
+    src_dem = (sum( [ mission.meta[src].min_workers for src in sources ] ))
+    if src_dem < workersavailable
+        @warn("More parent node workers requested ($src_dem) then workers available ($workersavailable). Some initial tasks will be unfullfilled at initialization.")
     end
     #Distribute jobs to workers by priority
     sources_by_priority = [ [ src, mission.meta[src].min_workers, mission.meta[src].priority ] for src in sources]
@@ -178,8 +180,11 @@ function initial_task_assignments(nm::NodeManager, mission::MissionGraph) #:< Di
                     worker_queue[ worker_idx ] = src
                     source_demand_by_priority[ src_idx ][2] -= 1
                     #handle if this is a stash iterator.
-                    if isa.( mission.meta[ src ].src, StashIterator )
-                        #msnsrc, state = iterate( mission.meta[ src ].src,  )
+                    if isa.( mission.meta[ src ].src, MissionNodeIterator ) &&
+                            !isnothing( mission.meta[ src ].src ) &&
+                            source_demand_by_priority[ src_idx ][2] == 0
+                        next!( mission.meta[ src ] )
+                        source_demand_by_priority[ src_idx ][2] = source_demand_by_priority[ src_idx ][1].min_worker_constant
                     end
                 end
             else

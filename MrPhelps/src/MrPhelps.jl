@@ -27,7 +27,7 @@ module MrPhelps
             total_worker_counts
 
     include("MissionNodes.jl")
-    export MissionNode, MissionNodeIterator, Agent, Stash, StashIterator, nextstash!
+    export MissionNode, MissionNodeIterator, Agent, Stash, StashIterator, next!, length
 
     include("MissionGraph.jl")
     export  MissionGraph, query_metadata, machines, add_node!, attach_node!,

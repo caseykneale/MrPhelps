@@ -28,13 +28,14 @@ Stash( src::String, fn::Union{Thunk,Function}, machines::Vector{String} ) = Stas
 Stash( src::String, fn::Union{Thunk,Function}, machines::Vector{String}, maxworkers::Int ) = Stash( src, fn, machines, 1, 1, maxworkers,[] )
 
 mutable struct StashIterator <: MissionNodeIterator
-    iter                ::Union{FileIterator, Vector{ String } }
+    iterator            ::Union{FileIterator, Vector{ String } }
     iteratorstate       ::Any
     #below matches exactly with Stash constructor...
     src                 ::String
     fn                  ::Union{Nothing, Thunk, Function}
     machines            ::Vector{ String }
     priority            ::Int
+    min_worker_constant ::Int
     min_workers         ::Int
     max_workers         ::Int
     dispatched_workers  ::Vector{ Int }
@@ -44,20 +45,27 @@ function StashIterator( src_iterator::Union{FileIterator,Vector{String}},
                         fn::Union{Thunk,Function},
                         machines::Vector{String},
                         priority::Int = 1,
-                        min_workers::Int = 1,
-                        max_workers::Int = 1 )
-    result, state   = src_iterator
+                        min_workers_per_iter::Int = 1,
+                        max_workers_per_iter::Int = 1 )
+    result, state   = iterate( src_iterator )
     return StashIterator(   src_iterator, state, result, fn, machines,
-                            priority, min_workers, max_workers,
+                            priority,
+                            copy(min_workers_per_iter),
+                            min_workers_per_iter, max_workers_per_iter,
                             Vector{Int}(undef, 0) )
 end
 
 """
-    nextstash( si::StashIterator )
+    next!( si::MissionNodeIterator )
 
-Updates a stash iterators source parameter by updating the internal iterator
+Updates a MissionNodeIterator's source parameter by updating the internal iterator
 
 """
-function nextstash!( si::StashIterator )
-    si.src[:], si.iteratorstate[:] = iterate( si.src_iterator, si.iteratorstate )
+function next!( si::MissionNodeIterator )
+    result = iterate( si.iterator, si.iteratorstate )
+    if isnothing( result )
+        si.src = nothing
+    else
+        si.src, si.iteratorstate = result
+    end
 end

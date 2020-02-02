@@ -6,7 +6,7 @@ localonly = true
 #                        Connect Machines!
 #First a user needs to define machines it has access too...
 MrPhelps.greet()
-if !localonly;  run(`scp -r /home/caseykneale/Desktop/Playground optics@192.168.0.14:/home/optics/`); end;
+!localonly && run(`scp -r /home/caseykneale/Desktop/Playground optics@192.168.0.14:/home/optics/`)
 #Define NodeManager - to keep track of Distributed Hooks to all machines
 nm = NodeManager()
 Local  = "127.0.0.1"
@@ -34,8 +34,13 @@ println( nm.machinenodemap )
 #                        Define Some Tasks
 mission = MissionGraph()
 #Add an unconnected node to the graph
-add_node!(mission, Stash(   "/home/caseykneale/Desktop/megacsv.csv",
-                            @thunk( string ), [ Local ], 1 ) )
+data_file_fomat = "data_{year}-{month}-{day}.csv"
+expansion = Dict( "year"  => [2020], "month" => [7,11], "day" => collect(1:30) )
+
+add_node!(mission, StashIterator( Expand(data_file_fomat, expansion),
+                                 @thunk( string ), [ Local ], 1 ) )
+# add_node!(mission, Stash(   "/home/caseykneale/Desktop/megacsv.csv",
+#                             @thunk( string ), [ Local ], 1 ) )
 #Add a new node to the graph but connect it to the last node laid down
 attach_node!(mission, Agent( @thunk( uppercase ), [ Local ] ) )
 #Add another new node, but give it a bookmark so we can find it later!
@@ -55,6 +60,10 @@ execute_mission( sc )
 
 @async spawn_listeners( sc )
 
+mission.meta[1]
+next!(mission.meta[1] )
+
+
 #for debugging
 #sc.worker_communications
 isready(sc.worker_communications[2])
@@ -63,25 +72,21 @@ isready(sc.worker_channels[2])
 isready(sc.worker_channels[3])
 
 # Testing StashIterators
-mission = MissionGraph()
-data_file_fomat = "data_{year}-{month}-{day}.csv"
-expansion = Dict(   "year"  => [2020],
-                    "month" => [7,11],
-                    "day"   => collect(1:30))
-
-add_node!(mission, StashIterator( Expand(data_file_fomat, expansion),
-                                 @thunk( string ), [ Local ], 1 ) )
-attach_node!(mission, Agent( @thunk( uppercase ), [ Local ] ) )
-attach_node!(mission, :prod => Agent( @thunk( lowercase ), [ Local ] ) )
-add_node!(mission, :final => Agent( @thunk( println ), [Local] ) )
-connect!(mission, :prod, :final)
-add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv",
-                                    @thunk( string ), [ Local ], 1 ) )
-connect!( mission, :references, :prod )
-
-
-
-
+# mission = MissionGraph()
+# data_file_fomat = "data_{year}-{month}-{day}.csv"
+# expansion = Dict(   "year"  => [2020],
+#                     "month" => [7,11],
+#                     "day"   => collect(1:30))
+#
+# add_node!(mission, StashIterator( Expand(data_file_fomat, expansion),
+#                                  @thunk( string ), [ Local ], 1 ) )
+# attach_node!(mission, Agent( @thunk( uppercase ), [ Local ] ) )
+# attach_node!(mission, :prod => Agent( @thunk( lowercase ), [ Local ] ) )
+# add_node!(mission, :final => Agent( @thunk( println ), [Local] ) )
+# connect!(mission, :prod, :final)
+# add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv",
+#                                     @thunk( string ), [ Local ], 1 ) )
+# connect!( mission, :references, :prod )
 ##########################################################################
 # Most naive scheme
 #   Worker starts process at a source
@@ -120,6 +125,6 @@ macro ift(ex...)
     end
 end
 
-abc() = "dfg"
-innerfun1() = @ift 1==1 then abc()
-innerfun3(a, b) = @ift a ==1 then b
+#abc() = "dfg"
+#innerfun1() = @ift 1==1 then abc()
+#innerfun3(a, b) = @ift a ==1 then b
