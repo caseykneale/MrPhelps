@@ -30,7 +30,7 @@ module MrPhelps
     export MissionNode, MissionNodeIterator, Agent, Stash, StashIterator, next!, length
 
     include("MissionGraph.jl")
-    export  MissionGraph, query_metadata, machines, add_node!, attach_node!,
+    export  MissionGraph, machines, add_node!, attach_node!,
         addbookmark!, attach_node!, connect!, terminalnodes,
         terminatingnodes, parentnodes, execution_paths
 

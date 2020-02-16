@@ -39,7 +39,8 @@ expansion = Dict( "year"  => [2020], "month" => [7,11], "day" => collect(1:30) )
 
 add_node!(mission, StashIterator( Expand(data_file_fomat, expansion),
                                  @thunk( string ), [ Local ], 1 ) )
-# add_node!(mission, Stash(   "/home/caseykneale/Desktop/megacsv.csv",
+#for testing the noniterable Stash
+#add_node!(mission, Stash(   "/home/caseykneale/Desktop/megacsv.csv",
 #                             @thunk( string ), [ Local ], 1 ) )
 #Add a new node to the graph but connect it to the last node laid down
 attach_node!(mission, Agent( @thunk( uppercase ), [ Local ] ) )
@@ -49,7 +50,7 @@ attach_node!(mission, :prod => Agent( @thunk( lowercase ), [ Local ] ) )
 add_node!(mission, :final => Agent( @thunk( println ), [Local] ) )
 #And now we can connect it to something else we bookmarked!
 connect!(mission, :prod, :final)
-#We made a very simple linear chain. Yay!
+#We made a very simple linear chain. Yay! Now lets add a side branch
 add_node!(mission, :references => Stash("/home/caseykneale/Desktop/refcsv.csv",
                                     @thunk( string ), [ Local ], 1 ) )
 connect!( mission, :references, :prod )
